@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/cupertino.dart' as prefix0;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -152,14 +151,14 @@ class _HomePageState extends State<HomePage> {
 
     Widget remarkableDivisor = Divider(
         color: Colors.black,
-        height: 5,
+        height: 5 / textPixelScale,
     );
 
     // TODO The methods below should be widgets in separate files. Just not worth doing it right in a simple example.
     Widget renderDivisor({String title}){
       return
         Padding(
-          padding: EdgeInsets.only(top: 40, bottom: 20),
+          padding: EdgeInsets.only(top: 40 / textPixelScale, bottom: 20 / textPixelScale),
           child: title != null && title.isNotEmpty ?
             Row(
                 children: <Widget>[
@@ -167,7 +166,7 @@ class _HomePageState extends State<HomePage> {
                       child: remarkableDivisor
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: 20 / textPixelScale),
                     child: Text(title, style: TextStyle(fontSize: 16 / textPixelScale, fontWeight: FontWeight.w600)),
                   ),
                   Expanded(
@@ -181,7 +180,7 @@ class _HomePageState extends State<HomePage> {
 
     Widget renderNote(String text){
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: 10 / textPixelScale),
         child: Column(
           children: <Widget>[
             Row(
@@ -195,7 +194,7 @@ class _HomePageState extends State<HomePage> {
                 )
               ]
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 10 / textPixelScale),
             Row(
               children: <Widget>[
                 Expanded(
@@ -214,10 +213,10 @@ class _HomePageState extends State<HomePage> {
 
     Widget renderSimpleButton(String label, {Color labelColor, Color backgroundColor, void Function() onPressed}){
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 5),
+        padding: EdgeInsets.symmetric(vertical: 5 / textPixelScale),
         child: RaisedButton(
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+            padding: EdgeInsets.symmetric(vertical: 10 / textPixelScale, horizontal: 5 / textPixelScale),
             child: Text(label, textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14 / textPixelScale
@@ -240,7 +239,7 @@ class _HomePageState extends State<HomePage> {
         ),
         body: Container(
           child: Padding(
-            padding: EdgeInsets.symmetric( horizontal: 15, vertical:8.0 ),
+            padding: EdgeInsets.symmetric( horizontal: 15 / textPixelScale, vertical:8.0 / textPixelScale ),
             child: ListView(
                 children: <Widget>[
 
@@ -613,7 +612,7 @@ class _HomePageState extends State<HomePage> {
     var largeIconPath = await _downloadAndSaveImage(
         'http://via.placeholder.com/48x48', 'largeIcon');
     var bigPicturePath = await _downloadAndSaveImage(
-        'http://via.placeholder.com/400x800', 'bigPicture');
+        'http://via.placeholder.com/300x800', 'bigPictureAction');
     var bigPictureStyleInformation = BigPictureStyleInformation(
         bigPicturePath, BitmapSource.FilePath,
         largeIcon: largeIconPath,
@@ -1042,9 +1041,13 @@ class SecondScreenState extends State<SecondScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+    MediaQueryData mediaQuery = MediaQuery.of(context);
+    double textPixelScale = mediaQuery.textScaleFactor;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen with Payload'),
+        title: Text('Second Screen with Payload', style: TextStyle(fontSize: 16 / textPixelScale)),
       ),
       body: Container(
         child: Row(
@@ -1053,15 +1056,15 @@ class SecondScreenState extends State<SecondScreen> {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),),
-                SizedBox(height: 20),
-                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload),
-                SizedBox(height: 20),
+                Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18 / textPixelScale),),
+                SizedBox(height: 20 / textPixelScale ),
+                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload, style: TextStyle(fontSize: 16 / textPixelScale)),
+                SizedBox(height: 20 / textPixelScale),
                 RaisedButton(
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    child: Text('Go back!')
+                    child: Text('Go back!', style: TextStyle(fontSize: 16 / textPixelScale),)
                 ),
               ],
             )
