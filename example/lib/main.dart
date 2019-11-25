@@ -312,34 +312,34 @@ class _HomePageState extends State<HomePage> {
                       }
                   ),
                   renderSimpleButton(
-                    'Show plain notification with low vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 0,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'Low intensity vibration',
-                        body: 'Low intensity vibration with low leds intensity',
-                        payload: 'Low intensity payload'
-                    )
+                      'Show plain notification with low vibration and led pattern',
+                      onPressed: () => _showNotificationWithVibrationPattern(
+                          intensity: 0,
+                          shouldSchedule: patternTestShouldSchedule,
+                          title: 'Low intensity vibration',
+                          body: 'Low intensity vibration and led',
+                          payload: 'Low intensity payload'
+                      )
                   ),
                   renderSimpleButton(
-                    'Show plain notification with medium vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 1,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'Medium intensity vibration',
-                        body: 'Medium intensity vibration with low leds intensity',
-                        payload: 'Medium intensity payload'
-                    )
+                      'Show plain notification with medium vibration and led pattern',
+                      onPressed: () => _showNotificationWithVibrationPattern(
+                          intensity: 1,
+                          shouldSchedule: patternTestShouldSchedule,
+                          title: 'Medium intensity vibration',
+                          body: 'Medium intensity vibration and led',
+                          payload: 'Medium intensity payload'
+                      )
                   ),
                   renderSimpleButton(
-                    'Show plain notification with high vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 2,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'High intensity vibration',
-                        body: 'High intensity vibration with low leds intensity',
-                        payload: 'High intensity payload'
-                    )
+                      'Show plain notification with high vibration and led pattern',
+                      onPressed: () => _showNotificationWithVibrationPattern(
+                          intensity: 2,
+                          shouldSchedule: patternTestShouldSchedule,
+                          title: 'High intensity vibration',
+                          body: 'High intensity vibration and led',
+                          payload: 'High intensity payload'
+                      )
                   ),
                   renderSimpleButton(
                       'Cancel notification',
