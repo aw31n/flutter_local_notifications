@@ -156,7 +156,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     // TODO The methods below should be widgets in separate files. Just not worth doing it right in a simple example.
-    Widget testDivisor({String title}){
+    Widget renderDivisor({String title}){
       return
         Padding(
           padding: EdgeInsets.only(top: 40, bottom: 20),
@@ -245,7 +245,7 @@ class _HomePageState extends State<HomePage> {
                 children: <Widget>[
 
                   /* ******************************************************************** */
-                  testDivisor( title: 'Plain Notifications' ),
+                  renderDivisor( title: 'Plain Notifications' ),
                   renderNote('Tap on a notification when it appears to trigger navigation'),
                   renderSimpleButton(
                       'Show plain notification with payload',
@@ -271,7 +271,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Vibration Patterns'),
+                  renderDivisor(title: 'Vibration Patterns'),
                   renderNote(
                       ' Android 8.0+, sounds and vibrations are associated with notification channels and can only be configured when they are first created on each installation.\n\n'+
                           'Showing/scheduling a notification will create a channel with the specified id if it doesn\'t exist already.\n\n'+
@@ -297,7 +297,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Leds and Colors'),
+                  renderDivisor(title: 'Leds and Colors'),
                   renderNote('red colour, large icon and red LED are Android-specific'),
                   renderSimpleButton(
                     'Schedule notification to appear in 5 seconds, custom sound, red colour, large icon, red LED',
@@ -311,7 +311,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor( title: 'Schedule Notifications' ),
+                  renderDivisor( title: 'Schedule Notifications' ),
                   renderSimpleButton(
                     'Repeat notification every minute',
                     onPressed: _repeatNotification,
@@ -332,7 +332,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Silenced Notifications'),
+                  renderDivisor(title: 'Silenced Notifications'),
                   renderSimpleButton(
                     'Show notification with no sound',
                     onPressed: _showNotificationWithNoSound
@@ -345,7 +345,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Big Picture Notifications'),
+                  renderDivisor(title: 'Big Picture Notifications'),
                   renderSimpleButton(
                     'Show big picture notification [Android]',
                     onPressed: _showBigPictureNotification
@@ -366,7 +366,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Html Layout Notifications'),
+                  renderDivisor(title: 'Html Layout Notifications'),
                   renderSimpleButton(
                     'Show big text notification [Android]',
                     onPressed: _showBigTextNotification
@@ -399,7 +399,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(title: 'Progress Notifications'),
+                  renderDivisor(title: 'Progress Notifications'),
                   renderSimpleButton(
                     'Show progress notification - updates every second [Android]',
                     onPressed: _showProgressNotification
@@ -416,7 +416,7 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  testDivisor(),
+                  renderDivisor(),
                   renderSimpleButton(
                     'Check pending notifications',
                     onPressed: _checkPendingNotificationRequests
