@@ -97,6 +97,9 @@ public class NotificationDetails {
     public static final String BODY = "body";
 
     public static final String TICKER = "ticker";
+
+    public static final String ACTION_BUTTONS = "actionButtons";
+
     public static final String ALLOW_WHILE_IDLE = "allowWhileIdle";
 
     public Integer id;
@@ -141,6 +144,7 @@ public class NotificationDetails {
     public Integer ledOffMs;
     public String ticker;
     public Boolean allowWhileIdle;
+    public Map<String, String> actionButtons;
 
 
     // Note: this is set on the Android to save details about the icon that should be used when re-hydrating scheduled notifications when a device has been restarted.
@@ -202,17 +206,36 @@ public class NotificationDetails {
             readColor(notificationDetails, platformChannelSpecifics);
             readChannelInformation(notificationDetails, platformChannelSpecifics);
             readLedInformation(notificationDetails, platformChannelSpecifics);
+            readButtons(notificationDetails, platformChannelSpecifics);
+
             notificationDetails.largeIcon = (String) platformChannelSpecifics.get(LARGE_ICON);
+
             if (platformChannelSpecifics.containsKey(LARGE_ICON_BITMAP_SOURCE)) {
                 Integer argumentValue = (Integer) platformChannelSpecifics.get(LARGE_ICON_BITMAP_SOURCE);
                 if (argumentValue != null) {
                     notificationDetails.largeIconBitmapSource = BitmapSource.values()[argumentValue];
                 }
             }
+
             notificationDetails.ticker = (String) platformChannelSpecifics.get(TICKER);
             notificationDetails.allowWhileIdle = (Boolean) platformChannelSpecifics.get(ALLOW_WHILE_IDLE);
         }
         return notificationDetails;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void readButtons(NotificationDetails notificationDetails, Map<String, Object> platformChannelSpecifics) {
+
+        // Using the constant ACTION_BUTTONS makes the app crashes in some platforms for a unknown reason.
+        // Seems like a recent Grove issue.
+        // Because of that i do not used the standard here.
+
+        if (platformChannelSpecifics.containsKey("actionButtons"/*ACTION_BUTTONS*/)) {
+            Object argumentValue = platformChannelSpecifics.get("actionButtons"/*ACTION_BUTTONS*/);
+            if (argumentValue != null && argumentValue instanceof Map<?,?>) {
+                notificationDetails.actionButtons = (Map<String, String>) argumentValue;
+            }
+        }
     }
 
     private static void readColor(NotificationDetails notificationDetails, Map<String, Object> platformChannelSpecifics) {

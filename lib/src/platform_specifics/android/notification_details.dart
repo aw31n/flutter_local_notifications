@@ -101,6 +101,9 @@ class AndroidNotificationDetails {
   /// Set the "ticker" text which is sent to accessibility services.
   String ticker;
 
+  /// Create the extra action buttons on botton of notification.
+  Map<String, String> actionButtons;
+
   /// The action to take for managing notification channels. Defaults to creating the notification channel using the provided details if it doesn't exist
   AndroidNotificationChannelAction channelAction;
 
@@ -134,7 +137,9 @@ class AndroidNotificationDetails {
       this.ledColor,
       this.ledOnMs,
       this.ledOffMs,
-      this.ticker});
+      this.ticker,
+      this.actionButtons
+  });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -177,7 +182,8 @@ class AndroidNotificationDetails {
       'ledColorBlue': ledColor?.blue,
       'ledOnMs': ledOnMs,
       'ledOffMs': ledOffMs,
-      'ticker': ticker
+      'ticker': ticker,
+      'actionButtons': actionButtons
     };
   }
 }

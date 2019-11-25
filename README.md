@@ -313,7 +313,7 @@ Notification icons should be added as a drawable resource. The example project/c
 
 When specifying the large icon bitmap or big picture bitmap (associated with the big picture style), bitmaps can be either a drawable resource or file on the device. This is specified via a single property (e.g. the `largeIcon` property associated with the `AndroidNotificationDetails` class) and there will be a corresponding property of the `BitmapSource` enum type (e.g. `largeIconBitmapSource`) that indicates if the string value represents the name of the drawable resource or the path to the bitmap file.
 
-Note that with Android 8.0+, sounds and vibrations are associated with notification channels and can only be configured when they are first created. Showing/scheduling a notification will create a channel with the specified id if it doesn't exist already. If another notification specifies the same channel id but tries to specify another sound or vibration pattern then nothing occurs.
+Note that with Android 8.0+, sounds and vibrations are associated with notification channels and can only be configured when they are first created on each installation. Showing/scheduling a notification will create a channel with the specified id if it doesn't exist already. If another notification specifies the same channel id but tries to specify another sound or vibration pattern then nothing occurs.
 
 When doing a release build of your app, you'll likely need to customise your ProGuard configuration file as per this [link](https://developer.android.com/studio/build/shrink-code#keep-code) and add the following line
 

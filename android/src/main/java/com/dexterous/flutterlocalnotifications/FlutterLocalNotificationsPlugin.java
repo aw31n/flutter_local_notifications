@@ -64,6 +64,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String DRAWABLE = "drawable";
     private static final String DEFAULT_ICON = "defaultIcon";
     private static final String SELECT_NOTIFICATION = "SELECT_NOTIFICATION";
+    private static final String ACTION_NOTIFICATION = "ACTION_NOTIFICATION";
     private static final String SCHEDULED_NOTIFICATIONS = "scheduled_notifications";
     private static final String INITIALIZE_METHOD = "initialize";
     private static final String PENDING_NOTIFICATION_REQUESTS_METHOD = "pendingNotificationRequests";
@@ -87,6 +88,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_DRAWABLE_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a drawable resource to your Android head project.";
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
+    public static String ACTION_ID = "action_id";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
     public static String REPEAT = "repeat";
@@ -116,6 +118,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         Intent intent = new Intent(context, getMainActivityClass(context));
         intent.setAction(SELECT_NOTIFICATION);
         intent.putExtra(PAYLOAD, notificationDetails.payload);
+        intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationDetails.id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         DefaultStyleInformation defaultStyleInformation = (DefaultStyleInformation) notificationDetails.styleInformation;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationDetails.channelId)
@@ -129,6 +132,15 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 .setOnlyAlertOnce(BooleanUtils.getValue(notificationDetails.onlyAlertOnce));
 
         setSmallIcon(context, notificationDetails, builder);
+/*
+        notificationDetails.actionButtons = new HashMap<>();
+        notificationDetails.actionButtons.put("TEST_KEY_1", "Action 1");
+        notificationDetails.actionButtons.put("TEST_KEY_2", "Action 2");
+*/
+        if (notificationDetails.actionButtons != null) {
+            createActionButtons(notificationDetails.actionButtons, builder, context, notificationDetails);
+        }
+
         if (!StringUtils.isNullOrEmpty(notificationDetails.largeIcon)) {
             builder.setLargeIcon(getBitmapFromSource(context, notificationDetails.largeIcon, notificationDetails.largeIconBitmapSource));
         }
@@ -143,6 +155,36 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         setStyle(context, notificationDetails, builder);
         setProgress(notificationDetails, builder);
         return builder.build();
+    }
+
+    @NonNull
+    public static void createActionButtons(Map<String, String> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
+
+        for(Map.Entry<String, String> entry : actionButtons.entrySet()) {
+
+            String buttonKey = entry.getKey();
+            String buttonName = entry.getValue();
+
+            //System.out.println("buttonKey: "+buttonKey);
+            //System.out.println("buttonName: "+buttonName);
+
+            Intent actionIntent = new Intent(context, getMainActivityClass(context));
+
+            actionIntent.setAction(ACTION_NOTIFICATION+"_"+buttonKey);
+            actionIntent.putExtra(PAYLOAD, notificationDetails.payload);
+            actionIntent.putExtra(NOTIFICATION_ID,  notificationDetails.id);
+            actionIntent.putExtra(ACTION_ID, buttonKey);
+
+            PendingIntent actionPendingIntent = PendingIntent.getActivity(
+                context,
+                notificationDetails.id,
+                actionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+            );
+
+            builder.addAction(0, buttonName, actionPendingIntent);
+
+        }
     }
 
     private static void setSmallIcon(Context context, NotificationDetails notificationDetails, NotificationCompat.Builder builder) {
@@ -819,11 +861,28 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     }
 
     private Boolean sendNotificationPayloadMessage(Intent intent) {
-        if (SELECT_NOTIFICATION.equals(intent.getAction())) {
+
+        String action_name = intent.getAction();
+
+        if (SELECT_NOTIFICATION.equals(action_name)) {
+            int notification_id = intent.getIntExtra(NOTIFICATION_ID, 0);
             String payload = intent.getStringExtra(PAYLOAD);
             channel.invokeMethod("selectNotification", payload);
             return true;
         }
+        else if (action_name.startsWith(ACTION_NOTIFICATION)) {
+            String payload = intent.getStringExtra(PAYLOAD);
+            String action_id = intent.getStringExtra(ACTION_ID);
+
+            int notification_id = intent.getIntExtra(NOTIFICATION_ID, 0);
+            // TODO "Button name" should be a object with more behaviour patterns, not only the label name
+            // I just want to be simple to starts. Cancel on click mimics the standard notification behaviour.
+            cancelNotification(notification_id);
+
+            channel.invokeMethod("selectNotification", action_id+"::"+payload);
+            return true;
+        }
+
         return false;
     }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart' as prefix0;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,17 +21,23 @@ final BehaviorSubject<ReceivedNotification> didReceiveLocalNotificationSubject =
 final BehaviorSubject<String> selectNotificationSubject =
     BehaviorSubject<String>();
 
+// Pause and Play vibration sequences
+final Int64List lowVibrationPattern    = Int64List.fromList([ 0, 200, 200, 200 ]);
+final Int64List mediumVibrationPattern = Int64List.fromList([ 0, 500, 200, 200, 200, 200 ]);
+final Int64List hardVibrationPattern   = Int64List.fromList([ 0, 1000, 200, 200, 200, 200, 200, 200 ]);
+
 class ReceivedNotification {
   final int id;
   final String title;
   final String body;
   final String payload;
 
-  ReceivedNotification(
-      {@required this.id,
-      @required this.title,
-      @required this.body,
-      @required this.payload});
+  ReceivedNotification({
+    @required this.id,
+    @required this.title,
+    @required this.body,
+    @required this.payload
+  });
 }
 
 /// IMPORTANT: running the following code on its own won't work as there is setup required for each platform head project.
@@ -139,162 +146,288 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+
+    MediaQueryData mediaQuery = MediaQuery.of(context);
+    double textPixelScale = mediaQuery.textScaleFactor;
+
+    Widget remarkableDivisor = Divider(
+        color: Colors.black,
+        height: 5,
+    );
+
+    // TODO The methods below should be widgets in separate files. Just not worth doing it right in a simple example.
+    Widget testDivisor({String title}){
+      return
+        Padding(
+          padding: EdgeInsets.only(top: 40, bottom: 20),
+          child: title != null && title.isNotEmpty ?
+            Row(
+                children: <Widget>[
+                  Expanded(
+                      child: remarkableDivisor
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(title, style: TextStyle(fontSize: 16 / textPixelScale, fontWeight: FontWeight.w600)),
+                  ),
+                  Expanded(
+                      child: remarkableDivisor
+                  ),
+                ]
+            ):
+            remarkableDivisor
+        );
+    }
+
+    Widget renderNote(String text){
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text('Note:', textAlign: TextAlign.left, style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14 / textPixelScale,
+                      fontStyle: FontStyle.italic
+                  ))
+                )
+              ]
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(text, textAlign: TextAlign.left,
+                    style: TextStyle(
+                        fontSize: 14 / textPixelScale
+                    )
+                  )
+                )
+              ]
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget renderSimpleButton(String label, {Color labelColor, Color backgroundColor, void Function() onPressed}){
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 5),
+        child: RaisedButton(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+            child: Text(label, textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14 / textPixelScale
+              ),
+            ),
+          ),
+          color: backgroundColor,
+          textColor: labelColor,
+          onPressed: () async {
+            await onPressed();
+          },
+        )
+      );
+    }
+
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Plugin example app'),
+          title: Text('Local Notification Example App', style: TextStyle(fontSize: 20  / textPixelScale),),
         ),
-        body: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
+        body: Container(
           child: Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Center(
-              child: Column(
+            padding: EdgeInsets.symmetric( horizontal: 15, vertical:8.0 ),
+            child: ListView(
                 children: <Widget>[
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 8.0),
-                    child: Text(
-                        'Tap on a notification when it appears to trigger navigation'),
+
+                  /* ******************************************************************** */
+                  testDivisor( title: 'Plain Notifications' ),
+                  renderNote('Tap on a notification when it appears to trigger navigation'),
+                  renderSimpleButton(
+                      'Show plain notification with payload',
+                      onPressed: _showNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show plain notification with payload',
-                    onPressed: () async {
-                      await _showNotification();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification with payload and action buttons',
+                    onPressed: _showNotificationWithButtons
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show plain notification that has no body with payload',
-                    onPressed: () async {
-                      await _showNotificationWithNoBody();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification that has no body with payload',
+                    onPressed: _showNotificationWithNoBody
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show plain notification with payload and update channel description [Android]',
-                    onPressed: () async {
-                      await _showNotificationWithUpdatedChannelDescription();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification with payload and update channel description [Android]',
+                    onPressed: _showNotificationWithUpdatedChannelDescription
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Cancel notification',
-                    onPressed: () async {
-                      await _cancelNotification();
-                    },
+                  renderSimpleButton(
+                    'Cancel notification',
+                    backgroundColor: Colors.red,
+                    labelColor: Colors.white,
+                    onPressed: _cancelNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Schedule notification to appear in 5 seconds, custom sound, red colour, large icon, red LED',
-                    onPressed: () async {
-                      await _scheduleNotification();
-                    },
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Vibration Patterns'),
+                  renderNote(
+                      ' Android 8.0+, sounds and vibrations are associated with notification channels and can only be configured when they are first created on each installation.\n\n'+
+                          'Showing/scheduling a notification will create a channel with the specified id if it doesn\'t exist already.\n\n'+
+                          'If another notification specifies the same channel id but tries to specify another sound or vibration pattern then nothing occurs.'
                   ),
-                  Text(
-                      'NOTE: red colour, large icon and red LED are Android-specific'),
-                  PaddedRaisedButton(
-                    buttonText: 'Repeat notification every minute',
-                    onPressed: () async {
-                      await _repeatNotification();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification with low vibration pattern',
+                    onPressed: _showNotificationLowVibration
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Repeat notification every day at approximately 10:00:00 am',
-                    onPressed: () async {
-                      await _showDailyAtTime();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification with medium vibration pattern',
+                    onPressed: _showNotificationMediumVibration
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Repeat notification weekly on Monday at approximately 10:00:00 am',
-                    onPressed: () async {
-                      await _showWeeklyAtDayAndTime();
-                    },
+                  renderSimpleButton(
+                    'Show plain notification with hard vibration pattern',
+                    onPressed: _showNotificationHardVibration
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show notification with no sound',
-                    onPressed: () async {
-                      await _showNotificationWithNoSound();
-                    },
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show big picture notification [Android]',
-                    onPressed: () async {
-                      await _showBigPictureNotification();
-                    },
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Leds and Colors'),
+                  renderNote('red colour, large icon and red LED are Android-specific'),
+                  renderSimpleButton(
+                    'Schedule notification to appear in 5 seconds, custom sound, red colour, large icon, red LED',
+                    onPressed: _scheduleNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show big picture notification, hide large icon on expand [Android]',
-                    onPressed: () async {
-                      await _showBigPictureNotificationHideExpandedLargeIcon();
-                    },
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show big text notification [Android]',
-                    onPressed: () async {
-                      await _showBigTextNotification();
-                    },
+
+                  /* ******************************************************************** */
+                  testDivisor( title: 'Schedule Notifications' ),
+                  renderSimpleButton(
+                    'Repeat notification every minute',
+                    onPressed: _repeatNotification,
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show inbox notification [Android]',
-                    onPressed: () async {
-                      await _showInboxNotification();
-                    },
+                  renderSimpleButton(
+                    'Repeat notification every day at approximately 10:00:00 am',
+                    onPressed: _showDailyAtTime
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show messaging notification [Android]',
-                    onPressed: () async {
-                      await _showMessagingNotification();
-                    },
+                  renderSimpleButton(
+                    'Repeat notification weekly on Monday at approximately 10:00:00 am',
+                    onPressed: _showWeeklyAtDayAndTime,
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show grouped notifications [Android]',
-                    onPressed: () async {
-                      await _showGroupedNotifications();
-                    },
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Show ongoing notification [Android]',
-                    onPressed: () async {
-                      await _showOngoingNotification();
-                    },
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Silenced Notifications'),
+                  renderSimpleButton(
+                    'Show notification with no sound',
+                    onPressed: _showNotificationWithNoSound
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show notification with no badge, alert only once [Android]',
-                    onPressed: () async {
-                      await _showNotificationWithNoBadge();
-                    },
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show progress notification - updates every second [Android]',
-                    onPressed: () async {
-                      await _showProgressNotification();
-                    },
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Big Picture Notifications'),
+                  renderSimpleButton(
+                    'Show big picture notification [Android]',
+                    onPressed: _showBigPictureNotification
                   ),
-                  PaddedRaisedButton(
-                    buttonText:
-                        'Show indeterminate progress notification [Android]',
-                    onPressed: () async {
-                      await _showIndeterminateProgressNotification();
-                    },
+                  renderSimpleButton(
+                    'Show big picture notification, hide large icon on expand [Android]',
+                    onPressed: _showBigPictureNotificationHideExpandedLargeIcon
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Check pending notifications',
-                    onPressed: () async {
-                      await _checkPendingNotificationRequests();
-                    },
+                  renderSimpleButton(
+                      'Show big picture notification with Action Buttons [Android]',
+                      onPressed: _showBigPictureNotificationActionButtons
                   ),
-                  PaddedRaisedButton(
-                    buttonText: 'Cancel all notifications',
-                    onPressed: () async {
-                      await _cancelAllNotifications();
-                    },
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
+                  ),
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Html Layout Notifications'),
+                  renderSimpleButton(
+                    'Show big text notification [Android]',
+                    onPressed: _showBigTextNotification
+                  ),
+                  renderSimpleButton(
+                    'Show inbox notification [Android]',
+                    onPressed: _showInboxNotification,
+                  ),
+                  renderSimpleButton(
+                    'Show messaging notification [Android]',
+                    onPressed: _showMessagingNotification
+                  ),
+                  renderSimpleButton(
+                    'Show grouped notifications [Android]',
+                    onPressed: _showGroupedNotifications
+                  ),
+                  renderSimpleButton(
+                    'Show ongoing notification [Android]',
+                    onPressed: _showOngoingNotification
+                  ),
+                  renderSimpleButton(
+                    'Show notification with no badge, alert only once [Android]',
+                    onPressed: _showNotificationWithNoBadge,
+                  ),
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
+                  ),
+
+                  /* ******************************************************************** */
+                  testDivisor(title: 'Progress Notifications'),
+                  renderSimpleButton(
+                    'Show progress notification - updates every second [Android]',
+                    onPressed: _showProgressNotification
+                  ),
+                  renderSimpleButton(
+                    'Show indeterminate progress notification [Android]',
+                    onPressed: _showIndeterminateProgressNotification
+                  ),
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
+                  ),
+
+                  /* ******************************************************************** */
+                  testDivisor(),
+                  renderSimpleButton(
+                    'Check pending notifications',
+                    onPressed: _checkPendingNotificationRequests
+                  ),
+                  renderSimpleButton(
+                    'Cancel all notifications',
+                    backgroundColor: Colors.red,
+                    labelColor: Colors.white,
+                    onPressed: _cancelAllNotifications
                   ),
                 ],
-              ),
             ),
           ),
         ),
@@ -305,7 +438,26 @@ class _HomePageState extends State<HomePage> {
   Future<void> _showNotification() async {
     var androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'your channel id', 'your channel name', 'your channel description',
-        importance: Importance.Max, priority: Priority.High, ticker: 'ticker');
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker'
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'plain body', platformChannelSpecifics,
+        payload: 'item x');
+  }
+
+  Future<void> _showNotificationWithButtons() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your channel id', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+        color: Colors.blueAccent,
+        actionButtons: {
+          'READED': 'Mark as readed',
+          'REMEMBER': 'Remember-me later'
+        }
+    );
     var iOSPlatformChannelSpecifics = IOSNotificationDetails();
     var platformChannelSpecifics = NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
@@ -366,6 +518,48 @@ class _HomePageState extends State<HomePage> {
         platformChannelSpecifics);
   }
 
+  Future<void> _showNotificationLowVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'lowVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: lowVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'low vibration', platformChannelSpecifics,
+        payload: 'item y');
+  }
+
+  Future<void> _showNotificationMediumVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'mediumVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: mediumVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'medium vibration', platformChannelSpecifics,
+        payload: 'item y');
+  }
+
+  Future<void> _showNotificationHardVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'hardVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: hardVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'hard vibration', platformChannelSpecifics,
+        payload: 'item y');
+  }
+
   Future<void> _showNotificationWithNoSound() async {
     var androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'silent channel id',
@@ -410,7 +604,37 @@ class _HomePageState extends State<HomePage> {
         style: AndroidNotificationStyle.BigPicture,
         styleInformation: bigPictureStyleInformation);
     var platformChannelSpecifics =
-        NotificationDetails(androidPlatformChannelSpecifics, null);
+    NotificationDetails(androidPlatformChannelSpecifics, null);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'big text title', 'silent body', platformChannelSpecifics);
+  }
+
+  Future<void> _showBigPictureNotificationActionButtons() async {
+    var largeIconPath = await _downloadAndSaveImage(
+        'http://via.placeholder.com/48x48', 'largeIcon');
+    var bigPicturePath = await _downloadAndSaveImage(
+        'http://via.placeholder.com/400x800', 'bigPicture');
+    var bigPictureStyleInformation = BigPictureStyleInformation(
+        bigPicturePath, BitmapSource.FilePath,
+        largeIcon: largeIconPath,
+        largeIconBitmapSource: BitmapSource.FilePath,
+        contentTitle: 'overridden <b>big</b> content title',
+        htmlFormatContentTitle: true,
+        summaryText: 'summary <i>text</i>',
+        htmlFormatSummaryText: true);
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'big text channel id',
+        'big text channel name',
+        'big text channel description',
+        style: AndroidNotificationStyle.BigPicture,
+        styleInformation: bigPictureStyleInformation,
+        actionButtons:{
+          'READED': 'Mark as readed',
+          'REMEMBER': 'Remember-me',
+        }
+    );
+    var platformChannelSpecifics =
+    NotificationDetails(androidPlatformChannelSpecifics, null);
     await flutterLocalNotificationsPlugin.show(
         0, 'big text title', 'silent body', platformChannelSpecifics);
   }
@@ -448,7 +672,9 @@ class _HomePageState extends State<HomePage> {
         contentTitle: 'overridden <b>big</b> content title',
         htmlFormatContentTitle: true,
         summaryText: 'summary <i>text</i>',
-        htmlFormatSummaryText: true);
+        htmlFormatSummaryText: true,
+
+    );
     var androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'big text channel id',
         'big text channel name',
@@ -818,14 +1044,28 @@ class SecondScreenState extends State<SecondScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen with payload: ${(_payload ?? '')}'),
+        title: Text('Second Screen with Payload'),
       ),
-      body: Center(
-        child: RaisedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text('Go back!'),
+      body: Container(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),),
+                SizedBox(height: 20),
+                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload),
+                SizedBox(height: 20),
+                RaisedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Go back!')
+                ),
+              ],
+            )
+          ]
         ),
       ),
     );
