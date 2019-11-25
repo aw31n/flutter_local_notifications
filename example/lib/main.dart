@@ -23,9 +23,7 @@ final BehaviorSubject<String> selectNotificationSubject =
 // Pause and Play vibration sequences
 final Int64List lowVibrationPattern    = Int64List.fromList([ 0, 200, 200, 200 ]);
 final Int64List mediumVibrationPattern = Int64List.fromList([ 0, 500, 200, 200, 200, 200 ]);
-final Int64List highVibrationPattern   = Int64List.fromList([ 0, 1000, 200, 200, 200, 200, 200, 200 ]);
-
-List<Int64List> vibrationPatterns = [lowVibrationPattern, mediumVibrationPattern, highVibrationPattern];
+final Int64List hardVibrationPattern   = Int64List.fromList([ 0, 1000, 200, 200, 200, 200, 200, 200 ]);
 
 class ReceivedNotification {
   final int id;
@@ -95,12 +93,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   final MethodChannel platform =
       MethodChannel('crossingthestreams.io/resourceResolver');
-
-  bool patternTestShouldSchedule = false;
-
   @override
   void initState() {
     super.initState();
@@ -153,17 +147,18 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
 
     MediaQueryData mediaQuery = MediaQuery.of(context);
+    double textPixelScale = mediaQuery.textScaleFactor;
 
     Widget remarkableDivisor = Divider(
         color: Colors.black,
-        height: 5,
+        height: 5 / textPixelScale,
     );
 
     // TODO The methods below should be widgets in separate files. Just not worth doing it right in a simple example.
     Widget renderDivisor({String title}){
       return
         Padding(
-          padding: EdgeInsets.only(top: 40, bottom: 20),
+          padding: EdgeInsets.only(top: 40 / textPixelScale, bottom: 20 / textPixelScale),
           child: title != null && title.isNotEmpty ?
             Row(
                 children: <Widget>[
@@ -171,9 +166,8 @@ class _HomePageState extends State<HomePage> {
                       child: remarkableDivisor
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(title,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    padding: EdgeInsets.symmetric(horizontal: 20 / textPixelScale),
+                    child: Text(title, style: TextStyle(fontSize: 16 / textPixelScale, fontWeight: FontWeight.w600)),
                   ),
                   Expanded(
                       child: remarkableDivisor
@@ -186,31 +180,27 @@ class _HomePageState extends State<HomePage> {
 
     Widget renderNote(String text){
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.symmetric(vertical: 10 / textPixelScale),
         child: Column(
           children: <Widget>[
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text('Note:',
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
+                  child: Text('Note:', textAlign: TextAlign.left, style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14 ,
+                      fontSize: 14 / textPixelScale,
                       fontStyle: FontStyle.italic
-                    )
-                  )
+                  ))
                 )
               ]
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 10 / textPixelScale),
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(text,
-                    textAlign: TextAlign.left,
+                  child: Text(text, textAlign: TextAlign.left,
                     style: TextStyle(
-                        fontSize: 14
+                        fontSize: 14 / textPixelScale
                     )
                   )
                 )
@@ -223,13 +213,13 @@ class _HomePageState extends State<HomePage> {
 
     Widget renderSimpleButton(String label, {Color labelColor, Color backgroundColor, void Function() onPressed}){
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 5),
+        padding: EdgeInsets.symmetric(vertical: 5 / textPixelScale),
         child: RaisedButton(
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+            padding: EdgeInsets.symmetric(vertical: 10 / textPixelScale, horizontal: 5 / textPixelScale),
             child: Text(label, textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14
+                fontSize: 14 / textPixelScale
               ),
             ),
           ),
@@ -242,30 +232,14 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    Widget renderCheckButton(String label, bool isSelected, {Color labelColor, Color backgroundColor, void Function(bool) onPressed}){
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text(label, style: TextStyle(fontSize: 16)),
-            Switch(
-              value: isSelected,
-              onChanged: onPressed,
-            ),
-          ]
-        )
-      );
-    }
-
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Local Notification Example App', style: TextStyle(fontSize: 20),),
+          title: Text('Local Notification Example App', style: TextStyle(fontSize: 20  / textPixelScale),),
         ),
         body: Container(
           child: Padding(
-            padding: EdgeInsets.symmetric( horizontal: 15, vertical:8 ),
+            padding: EdgeInsets.symmetric( horizontal: 15 / textPixelScale, vertical:8.0 / textPixelScale ),
             child: ListView(
                 children: <Widget>[
 
@@ -296,50 +270,23 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   /* ******************************************************************** */
-                  renderDivisor(title: 'Vibration and Led Patterns'),
+                  renderDivisor(title: 'Vibration Patterns'),
                   renderNote(
                       ' Android 8.0+, sounds and vibrations are associated with notification channels and can only be configured when they are first created on each installation.\n\n'+
                           'Showing/scheduling a notification will create a channel with the specified id if it doesn\'t exist already.\n\n'+
                           'If another notification specifies the same channel id but tries to specify another sound or vibration pattern then nothing occurs.'
                   ),
-                  renderCheckButton(
-                      'Delay notification for 5 seconds',
-                      patternTestShouldSchedule,
-                      onPressed: (value){
-                        setState(() {
-                          patternTestShouldSchedule = value;
-                        });
-                      }
+                  renderSimpleButton(
+                    'Show plain notification with low vibration pattern',
+                    onPressed: _showNotificationLowVibration
                   ),
                   renderSimpleButton(
-                    'Show plain notification with low vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 0,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'Low intensity vibration',
-                        body: 'Low intensity vibration with low leds intensity',
-                        payload: 'Low intensity payload'
-                    )
+                    'Show plain notification with medium vibration pattern',
+                    onPressed: _showNotificationMediumVibration
                   ),
                   renderSimpleButton(
-                    'Show plain notification with medium vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 1,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'Medium intensity vibration',
-                        body: 'Medium intensity vibration with low leds intensity',
-                        payload: 'Medium intensity payload'
-                    )
-                  ),
-                  renderSimpleButton(
-                    'Show plain notification with high vibration and led pattern',
-                    onPressed: () => _showNotificationWithVibrationPattern(
-                        intensity: 2,
-                        shouldSchedule: patternTestShouldSchedule,
-                        title: 'High intensity vibration',
-                        body: 'High intensity vibration with low leds intensity',
-                        payload: 'High intensity payload'
-                    )
+                    'Show plain notification with hard vibration pattern',
+                    onPressed: _showNotificationHardVibration
                   ),
                   renderSimpleButton(
                       'Cancel notification',
@@ -534,58 +481,6 @@ class _HomePageState extends State<HomePage> {
     await flutterLocalNotificationsPlugin.cancel(0);
   }
 
-  // Lights intensity should be the inverse of vibration intensity
-  int getLedIntensity(int intensity){
-    int response = vibrationPatterns[vibrationPatterns.length - 1 - intensity][1] * 2;
-    return response;
-  }
-
-  Future<void> _showNotificationWithVibrationPattern({int intensity, bool shouldSchedule, String title, String body, String payload}) async {
-
-    int ledIntensity = getLedIntensity(intensity);
-
-    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'intensity_channel_'+intensity.toString(),
-      'Vibration Patterns and Leds',
-      'Test of changing intensity patterns for vibration and led',
-      importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
-      vibrationPattern: vibrationPatterns[intensity ?? 0],
-      enableLights: true,
-      ledOffMs: ledIntensity,
-      ledOnMs: ledIntensity,
-      color: Colors.deepPurple,
-      ledColor: Colors.deepPurple,
-    );
-
-    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
-    var platformChannelSpecifics = NotificationDetails(
-        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
-
-    if(shouldSchedule){
-
-      var scheduledNotificationDateTime = DateTime.now().add(Duration(seconds: 5));
-      await flutterLocalNotificationsPlugin.schedule(
-        0,
-        title ?? 'title',
-        body ?? 'body',
-        scheduledNotificationDateTime,
-        platformChannelSpecifics,
-        payload: payload ?? 'item Z',
-      );
-
-    } else {
-
-      await flutterLocalNotificationsPlugin.show(
-        0,
-        title ?? 'title',
-        body ?? 'body',
-        platformChannelSpecifics,
-        payload: payload ?? 'item Z',
-      );
-
-    }
-  }
-
   /// Schedules a notification that specifies a different icon, sound and vibration pattern
   Future<void> _scheduleNotification() async {
     var scheduledNotificationDateTime =
@@ -607,7 +502,7 @@ class _HomePageState extends State<HomePage> {
         vibrationPattern: vibrationPattern,
         enableLights: true,
         color: const Color.fromARGB(255, 255, 0, 0),
-        ledColor: Colors.red,
+        ledColor: const Color.fromARGB(255, 255, 0, 0),
         ledOnMs: 1000,
         ledOffMs: 500);
     var iOSPlatformChannelSpecifics =
@@ -620,6 +515,48 @@ class _HomePageState extends State<HomePage> {
         'scheduled body',
         scheduledNotificationDateTime,
         platformChannelSpecifics);
+  }
+
+  Future<void> _showNotificationLowVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'lowVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: lowVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'low vibration', platformChannelSpecifics,
+        payload: 'item y');
+  }
+
+  Future<void> _showNotificationMediumVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'mediumVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: mediumVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'medium vibration', platformChannelSpecifics,
+        payload: 'item y');
+  }
+
+  Future<void> _showNotificationHardVibration() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'hardVibration', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+      vibrationPattern: hardVibrationPattern,
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'hard vibration', platformChannelSpecifics,
+        payload: 'item y');
   }
 
   Future<void> _showNotificationWithNoSound() async {
@@ -1106,10 +1043,11 @@ class SecondScreenState extends State<SecondScreen> {
   Widget build(BuildContext context) {
 
     MediaQueryData mediaQuery = MediaQuery.of(context);
+    double textPixelScale = mediaQuery.textScaleFactor;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen with Payload', style: TextStyle(fontSize: 16)),
+        title: Text('Second Screen with Payload', style: TextStyle(fontSize: 16 / textPixelScale)),
       ),
       body: Container(
         child: Row(
@@ -1118,15 +1056,15 @@ class SecondScreenState extends State<SecondScreen> {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),),
-                SizedBox(height: 20 ),
-                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload, style: TextStyle(fontSize: 16)),
-                SizedBox(height: 20),
+                Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18 / textPixelScale),),
+                SizedBox(height: 20 / textPixelScale ),
+                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload, style: TextStyle(fontSize: 16 / textPixelScale)),
+                SizedBox(height: 20 / textPixelScale),
                 RaisedButton(
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    child: Text('Go back!', style: TextStyle(fontSize: 16),)
+                    child: Text('Go back!', style: TextStyle(fontSize: 16 / textPixelScale),)
                 ),
               ],
             )
