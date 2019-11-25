@@ -9,7 +9,10 @@ import 'notification_details.dart';
 import 'pending_notification_request.dart';
 
 /// Signature of callback passed to [initialize]. Callback triggered when user taps on a notification
+
+// TODO DEPRECATED
 typedef SelectNotificationCallback = Future<dynamic> Function(String payload);
+typedef ReceiveNotificationCallback = Future<dynamic> Function(Map<dynamic, dynamic> payload);
 
 // Signature of the callback that is triggered when a notification is shown whilst the app is in the foreground. Applicable to iOS versions < 10 only
 typedef DidReceiveLocalNotificationCallback = Future<dynamic> Function(
@@ -79,19 +82,29 @@ class FlutterLocalNotificationsPlugin {
   final MethodChannel _channel;
   final Platform _platform;
 
-  SelectNotificationCallback selectNotificationCallback;
+  SelectNotificationCallback  selectNotificationCallback;
+  ReceiveNotificationCallback receiveNotificationCallback;
 
   DidReceiveLocalNotificationCallback didReceiveLocalNotificationCallback;
 
   /// Initializes the plugin. Call this method on application before using the plugin further. This should only be done once. When a notification created by this plugin was used to launch the app, calling `initialize` is what will trigger to the `onSelectNotification` callback to be fire.
   Future<bool> initialize(InitializationSettings initializationSettings,
-      {SelectNotificationCallback onSelectNotification}) async {
-    selectNotificationCallback = onSelectNotification;
+      {
+        SelectNotificationCallback onSelectNotification,
+        ReceiveNotificationCallback onReceiveNotification
+      }
+  ) async {
+    selectNotificationCallback  = onSelectNotification;
+    receiveNotificationCallback = onReceiveNotification;
+
     didReceiveLocalNotificationCallback =
         initializationSettings?.ios?.onDidReceiveLocalNotification;
+
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificInitializationSettings(initializationSettings);
+
     _channel.setMethodCallHandler(_handleMethod);
+
     /*final CallbackHandle callback =
         PluginUtilities.getCallbackHandle(_callbackDispatcher);
     serializedPlatformSpecifics['callbackDispatcher'] = callback.toRawHandle();
@@ -99,6 +112,7 @@ class FlutterLocalNotificationsPlugin {
       serializedPlatformSpecifics['onNotificationCallbackDispatcher'] =
           PluginUtilities.getCallbackHandle(onShowNotification).toRawHandle();
     }*/
+
     var result =
         await _channel.invokeMethod('initialize', serializedPlatformSpecifics);
     return result;
@@ -254,15 +268,22 @@ class FlutterLocalNotificationsPlugin {
 
   Future<void> _handleMethod(MethodCall call) {
     switch (call.method) {
+
       case 'selectNotification':
+        // DEPRECATED AND UNSECURE
         return selectNotificationCallback(call.arguments);
+
+      case 'receiveNotification':
+        return receiveNotificationCallback(call.arguments);
 
       case 'didReceiveLocalNotification':
         return didReceiveLocalNotificationCallback(
             call.arguments['id'],
             call.arguments['title'],
             call.arguments['body'],
-            call.arguments['payload']);
+            call.arguments['payload']
+        );
+
       default:
         return Future.error('method not defined');
     }

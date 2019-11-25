@@ -144,7 +144,7 @@ public class NotificationDetails {
     public Integer ledOffMs;
     public String ticker;
     public Boolean allowWhileIdle;
-    public Map<String, String> actionButtons;
+    public Map<String, Object> actionButtons;
 
 
     // Note: this is set on the Android to save details about the icon that should be used when re-hydrating scheduled notifications when a device has been restarted.
@@ -156,6 +156,7 @@ public class NotificationDetails {
         notificationDetails.id = (Integer) arguments.get(ID);
         notificationDetails.title = (String) arguments.get(TITLE);
         notificationDetails.body = (String) arguments.get(BODY);
+
         if (arguments.containsKey(MILLISECONDS_SINCE_EPOCH)) {
             notificationDetails.millisecondsSinceEpoch = (Long) arguments.get(MILLISECONDS_SINCE_EPOCH);
         }
@@ -191,6 +192,7 @@ public class NotificationDetails {
             notificationDetails.groupAlertBehavior = (Integer) platformChannelSpecifics.get(GROUP_ALERT_BEHAVIOR);
             notificationDetails.onlyAlertOnce = (Boolean) platformChannelSpecifics.get(ONLY_ALERT_ONCE);
             notificationDetails.showProgress = (Boolean) platformChannelSpecifics.get(SHOW_PROGRESS);
+
             if (platformChannelSpecifics.containsKey(MAX_PROGRESS)) {
                 notificationDetails.maxProgress = (Integer) platformChannelSpecifics.get(MAX_PROGRESS);
             }
@@ -233,7 +235,7 @@ public class NotificationDetails {
         if (platformChannelSpecifics.containsKey("actionButtons"/*ACTION_BUTTONS*/)) {
             Object argumentValue = platformChannelSpecifics.get("actionButtons"/*ACTION_BUTTONS*/);
             if (argumentValue != null && argumentValue instanceof Map<?,?>) {
-                notificationDetails.actionButtons = (Map<String, String>) argumentValue;
+                notificationDetails.actionButtons = (Map<String, Object>) argumentValue;
             }
         }
     }

@@ -60,13 +60,25 @@ Future<void> main() async {
   });
   var initializationSettings = InitializationSettings(
       initializationSettingsAndroid, initializationSettingsIOS);
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings,
+
+  await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      /* DEPRECATED AND UNSECURE
       onSelectNotification: (String payload) async {
-    if (payload != null) {
-      debugPrint('notification payload: ' + payload);
-    }
-    selectNotificationSubject.add(payload);
-  });
+      if (payload != null) {
+        debugPrint('notification payload: ' + payload);
+      }
+      selectNotificationSubject.add(payload);
+      }*/
+      onReceiveNotification: (Map<dynamic, dynamic> response) async {
+        if (response['payload'] != null) {
+          debugPrint('notification payload: ' + response['payload']);
+        }
+        selectNotificationSubject.add(
+            ( response['action_key'] != null ? response['action_key'] + ': ' : '' ) + response['payload']
+        );
+      }
+  );
   runApp(
     MaterialApp(
       home: HomePage(),
@@ -506,8 +518,14 @@ class _HomePageState extends State<HomePage> {
         importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
         color: Colors.blueAccent,
         actionButtons: {
-          'READED': 'Mark as readed',
-          'REMEMBER': 'Remember-me later'
+          'READED': NotificationActionDetails(
+            'Mark as readed',
+            autoCancel: true
+          ),
+          'REMEMBER':  NotificationActionDetails(
+              'Remember-me later',
+              autoCancel: true
+          ),
         }
     );
     var iOSPlatformChannelSpecifics = IOSNotificationDetails();
@@ -690,9 +708,15 @@ class _HomePageState extends State<HomePage> {
         'big text channel description',
         style: AndroidNotificationStyle.BigPicture,
         styleInformation: bigPictureStyleInformation,
-        actionButtons:{
-          'READED': 'Mark as readed',
-          'REMEMBER': 'Remember-me',
+        actionButtons: {
+          'READED': NotificationActionDetails(
+              'Mark as readed',
+              autoCancel: true
+          ),
+          'REMEMBER': NotificationActionDetails(
+              'Remember-me later',
+              autoCancel: true
+          )
         }
     );
     var platformChannelSpecifics =

@@ -78,6 +78,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD = "getNotificationAppLaunchDetails";
     private static final String METHOD_CHANNEL = "dexterous.com/flutter/local_notifications";
     private static final String PAYLOAD = "payload";
+    private static final String AUTO_CANCEL = "autoCancel";
+    private static final String BUTTON_LABEL = "label";
     private static final String INVALID_ICON_ERROR_CODE = "INVALID_ICON";
     private static final String INVALID_LARGE_ICON_ERROR_CODE = "INVALID_LARGE_ICON";
     private static final String INVALID_BIG_PICTURE_ERROR_CODE = "INVALID_BIG_PICTURE";
@@ -88,7 +90,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_DRAWABLE_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a drawable resource to your Android head project.";
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
-    public static String ACTION_ID = "action_id";
+    public static String ACTION_KEY = "action_id";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
     public static String REPEAT = "repeat";
@@ -132,11 +134,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 .setOnlyAlertOnce(BooleanUtils.getValue(notificationDetails.onlyAlertOnce));
 
         setSmallIcon(context, notificationDetails, builder);
-/*
-        notificationDetails.actionButtons = new HashMap<>();
-        notificationDetails.actionButtons.put("TEST_KEY_1", "Action 1");
-        notificationDetails.actionButtons.put("TEST_KEY_2", "Action 2");
-*/
+
         if (notificationDetails.actionButtons != null) {
             createActionButtons(notificationDetails.actionButtons, builder, context, notificationDetails);
         }
@@ -158,22 +156,26 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     }
 
     @NonNull
-    public static void createActionButtons(Map<String, String> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
+    public static void createActionButtons(Map<String, Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
 
-        for(Map.Entry<String, String> entry : actionButtons.entrySet()) {
+        for(Map.Entry<String, Object> entry : actionButtons.entrySet()) {
 
             String buttonKey = entry.getKey();
-            String buttonName = entry.getValue();
+            Map<String, Object> buttonProperties = (Map<String, Object>) entry.getValue();
 
-            //System.out.println("buttonKey: "+buttonKey);
-            //System.out.println("buttonName: "+buttonName);
+            String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
+            boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
+
+            System.out.println("buttonKey: " + buttonKey);
+            System.out.println("buttonName: " + buttonName);
 
             Intent actionIntent = new Intent(context, getMainActivityClass(context));
 
-            actionIntent.setAction(ACTION_NOTIFICATION+"_"+buttonKey);
+            actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
+            actionIntent.putExtra(AUTO_CANCEL, autoCancel);
             actionIntent.putExtra(PAYLOAD, notificationDetails.payload);
             actionIntent.putExtra(NOTIFICATION_ID,  notificationDetails.id);
-            actionIntent.putExtra(ACTION_ID, buttonKey);
+            actionIntent.putExtra(ACTION_KEY, buttonKey);
 
             PendingIntent actionPendingIntent = PendingIntent.getActivity(
                 context,
@@ -864,22 +866,35 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
         String action_name = intent.getAction();
 
-        if (SELECT_NOTIFICATION.equals(action_name)) {
-            int notification_id = intent.getIntExtra(NOTIFICATION_ID, 0);
+        if (
+                SELECT_NOTIFICATION.equals(action_name) ||
+                action_name.startsWith(ACTION_NOTIFICATION)
+        ) {
+
+            // ****************** DEPRECATED AND UNSECURE *******************
+            //
+            // https://github.com/MaikuB/flutter_local_notifications/issues/378
+            //
+            // **************************************************************
             String payload = intent.getStringExtra(PAYLOAD);
             channel.invokeMethod("selectNotification", payload);
-            return true;
-        }
-        else if (action_name.startsWith(ACTION_NOTIFICATION)) {
-            String payload = intent.getStringExtra(PAYLOAD);
-            String action_id = intent.getStringExtra(ACTION_ID);
+            // ****************** DEPRECATED AND UNSECURE *******************
 
-            int notification_id = intent.getIntExtra(NOTIFICATION_ID, 0);
-            // TODO "Button name" should be a object with more behaviour patterns, not only the label name
-            // I just want to be simple to starts. Cancel on click mimics the standard notification behaviour.
-            cancelNotification(notification_id);
 
-            channel.invokeMethod("selectNotification", action_id+"::"+payload);
+            Map<String, Object> returnObject = new HashMap<>();
+
+            int notification_id = intent.getIntExtra(NOTIFICATION_ID, -1);
+
+            returnObject.put("notification_id", notification_id);
+            returnObject.put("action_key", intent.getStringExtra(ACTION_KEY));
+            returnObject.put("payload", intent.getStringExtra(PAYLOAD));
+
+            if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){
+                cancelNotification(new Integer(notification_id));
+            }
+
+            channel.invokeMethod("receiveNotification", returnObject);
+
             return true;
         }
 
