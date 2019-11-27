@@ -122,7 +122,7 @@ public class NotificationDetails {
     public Time repeatTime;
     public Long millisecondsSinceEpoch;
     public Long calledAt;
-    public String payload;
+    public Map<String, String> payload;
     public String groupKey;
     public Boolean setAsGroupSummary;
     public Integer groupAlertBehavior;
@@ -152,7 +152,6 @@ public class NotificationDetails {
 
     public static NotificationDetails from(Map<String, Object> arguments) {
         NotificationDetails notificationDetails = new NotificationDetails();
-        notificationDetails.payload = (String) arguments.get(PAYLOAD);
         notificationDetails.id = (Integer) arguments.get(ID);
         notificationDetails.title = (String) arguments.get(TITLE);
         notificationDetails.body = (String) arguments.get(BODY);
@@ -165,6 +164,11 @@ public class NotificationDetails {
         }
         if (arguments.containsKey(REPEAT_INTERVAL)) {
             notificationDetails.repeatInterval = RepeatInterval.values()[(Integer) arguments.get(REPEAT_INTERVAL)];
+        }
+        if (arguments.containsKey(PAYLOAD) && arguments.get(PAYLOAD) instanceof Map<?,?>) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> payloadInstance = (Map<String, String>) arguments.get(PAYLOAD);
+            notificationDetails.payload = payloadInstance;
         }
         if (arguments.containsKey(REPEAT_TIME)) {
             @SuppressWarnings("unchecked")

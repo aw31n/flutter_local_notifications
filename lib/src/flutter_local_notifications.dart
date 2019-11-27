@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/src/payload.dart';
 import 'package:meta/meta.dart';
 import 'package:platform/platform.dart';
 import 'initialization_settings.dart';
@@ -12,11 +13,11 @@ import 'pending_notification_request.dart';
 
 // TODO DEPRECATED
 typedef SelectNotificationCallback = Future<dynamic> Function(String payload);
-typedef ReceiveNotificationCallback = Future<dynamic> Function(Map<dynamic, dynamic> payload);
+typedef ReceiveNotificationCallback = Future<dynamic> Function(Map<String, dynamic> payload);
 
 // Signature of the callback that is triggered when a notification is shown whilst the app is in the foreground. Applicable to iOS versions < 10 only
 typedef DidReceiveLocalNotificationCallback = Future<dynamic> Function(
-    int id, String title, String body, String payload);
+    int id, String title, String body,  Map<String, String> payload);
 
 /// The available intervals for periodically showing notifications
 enum RepeatInterval { EveryMinute, Hourly, Daily, Weekly }
@@ -85,7 +86,7 @@ class FlutterLocalNotificationsPlugin {
   SelectNotificationCallback  selectNotificationCallback;
   ReceiveNotificationCallback receiveNotificationCallback;
 
-  DidReceiveLocalNotificationCallback didReceiveLocalNotificationCallback;
+  //DidReceiveLocalNotificationCallback didReceiveLocalNotificationCallback;
 
   /// Initializes the plugin. Call this method on application before using the plugin further. This should only be done once. When a notification created by this plugin was used to launch the app, calling `initialize` is what will trigger to the `onSelectNotification` callback to be fire.
   Future<bool> initialize(InitializationSettings initializationSettings,
@@ -97,8 +98,8 @@ class FlutterLocalNotificationsPlugin {
     selectNotificationCallback  = onSelectNotification;
     receiveNotificationCallback = onReceiveNotification;
 
-    didReceiveLocalNotificationCallback =
-        initializationSettings?.ios?.onDidReceiveLocalNotification;
+    /*didReceiveLocalNotificationCallback =
+        initializationSettings?.ios?.onDidReceiveLocalNotification;*/
 
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificInitializationSettings(initializationSettings);
@@ -127,7 +128,7 @@ class FlutterLocalNotificationsPlugin {
   /// Show a notification with an optional payload that will be passed back to the app when a notification is tapped
   Future<void> show(int id, String title, String body,
       NotificationDetails notificationDetails,
-      {String payload}) async {
+      {Payload payload}) async {
     _validateId(id);
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificNotificationDetails(notificationDetails);
@@ -136,7 +137,7 @@ class FlutterLocalNotificationsPlugin {
       'title': title,
       'body': body,
       'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload ?? ''
+      'payload': payload != null ? payload.toMap() : ''
     });
   }
 
@@ -156,7 +157,7 @@ class FlutterLocalNotificationsPlugin {
   /// even when in a low-power idle mode.
   Future<void> schedule(int id, String title, String body,
       DateTime scheduledDate, NotificationDetails notificationDetails,
-      {String payload, bool androidAllowWhileIdle = false}) async {
+      {Payload payload, bool androidAllowWhileIdle = false}) async {
     _validateId(id);
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificNotificationDetails(notificationDetails);
@@ -169,7 +170,7 @@ class FlutterLocalNotificationsPlugin {
       'body': body,
       'millisecondsSinceEpoch': scheduledDate.millisecondsSinceEpoch,
       'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload ?? ''
+      'payload': payload != null ? payload.toMap() : ''
     });
   }
 
@@ -177,7 +178,7 @@ class FlutterLocalNotificationsPlugin {
   /// For example, specifying a hourly interval means the first time the notification will be an hour after the method has been called and then every hour after that.
   Future<void> periodicallyShow(int id, String title, String body,
       RepeatInterval repeatInterval, NotificationDetails notificationDetails,
-      {String payload}) async {
+      {Payload payload}) async {
     _validateId(id);
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificNotificationDetails(notificationDetails);
@@ -188,14 +189,14 @@ class FlutterLocalNotificationsPlugin {
       'calledAt': DateTime.now().millisecondsSinceEpoch,
       'repeatInterval': repeatInterval.index,
       'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload ?? ''
+      'payload': payload != null ? payload.toMap() : ''
     });
   }
 
   /// Shows a notification on a daily interval at the specified time
   Future<void> showDailyAtTime(int id, String title, String body,
       Time notificationTime, NotificationDetails notificationDetails,
-      {String payload}) async {
+      {Payload payload}) async {
     _validateId(id);
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificNotificationDetails(notificationDetails);
@@ -207,14 +208,14 @@ class FlutterLocalNotificationsPlugin {
       'repeatInterval': RepeatInterval.Daily.index,
       'repeatTime': notificationTime.toMap(),
       'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload ?? ''
+      'payload': payload != null ? payload.toMap() : ''
     });
   }
 
   /// Shows a notification on a daily interval at the specified time
   Future<void> showWeeklyAtDayAndTime(int id, String title, String body,
       Day day, Time notificationTime, NotificationDetails notificationDetails,
-      {String payload}) async {
+      {Payload payload}) async {
     _validateId(id);
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificNotificationDetails(notificationDetails);
@@ -227,7 +228,7 @@ class FlutterLocalNotificationsPlugin {
       'repeatTime': notificationTime.toMap(),
       'day': day.value,
       'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload ?? ''
+      'payload': payload != null ? payload.toMap() : ''
     });
   }
 
@@ -267,22 +268,32 @@ class FlutterLocalNotificationsPlugin {
   }
 
   Future<void> _handleMethod(MethodCall call) {
+
+    print('handle received');
+
+    Map<String, dynamic> arguments;
+
+    switch (call.method) {
+      case 'selectNotification':
+      case 'receiveNotification':
+      case 'didReceiveLocalNotification':
+        arguments = Map<String, dynamic>.from(call.arguments);
+        arguments['payload'] = Map<String, String>.from(arguments['payload']);
+    }
+
     switch (call.method) {
 
       case 'selectNotification':
         // DEPRECATED AND UNSECURE
-        return selectNotificationCallback(call.arguments);
+        return selectNotificationCallback(arguments['payload'].toString());
 
       case 'receiveNotification':
-        return receiveNotificationCallback(call.arguments);
+        //call.arguments['isReceivedForeground'] = false;
+        return receiveNotificationCallback(arguments);
 
       case 'didReceiveLocalNotification':
-        return didReceiveLocalNotificationCallback(
-            call.arguments['id'],
-            call.arguments['title'],
-            call.arguments['body'],
-            call.arguments['payload']
-        );
+      //call.arguments['isReceivedForeground'] = true;
+        return receiveNotificationCallback(arguments);
 
       default:
         return Future.error('method not defined');

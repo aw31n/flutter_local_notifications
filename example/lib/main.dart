@@ -9,16 +9,15 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rxdart/subjects.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 // Streams are created so that app can respond to notification-related events since the plugin is initialised in the `main` function
-final BehaviorSubject<ReceivedNotification> didReceiveLocalNotificationSubject =
-    BehaviorSubject<ReceivedNotification>();
-
-final BehaviorSubject<String> selectNotificationSubject =
-    BehaviorSubject<String>();
+final BehaviorSubject<Map<String, dynamic>> didReceiveNotification = BehaviorSubject<Map<String, dynamic>>();
 
 // Pause and Play vibration sequences
 final Int64List lowVibrationPattern    = Int64List.fromList([ 0, 200, 200, 200 ]);
@@ -27,79 +26,60 @@ final Int64List highVibrationPattern   = Int64List.fromList([ 0, 1000, 200, 200,
 
 List<Int64List> vibrationPatterns = [lowVibrationPattern, mediumVibrationPattern, highVibrationPattern];
 
-class ReceivedNotification {
-  final int id;
-  final String title;
-  final String body;
-  final String payload;
 
-  ReceivedNotification({
-    @required this.id,
-    @required this.title,
-    @required this.body,
-    @required this.payload
-  });
+
+// Example payload object
+class PromotionalPayload extends Payload {
+
+  String notificationUuid;
+  String promotionalCode;
+
+  PromotionalPayload({this.notificationUuid, this.promotionalCode});
+
+  @override
+  PromotionalPayload fromMap(Map<String, dynamic> receivedPayload) {
+    super.fromMap(receivedPayload);
+
+    notificationUuid = receivedPayload['payload']['notificationUuid'];
+    promotionalCode = receivedPayload['payload']['promotionalCode'];
+
+    return this;
+  }
+
+  @override
+  Map<String, String> toMap() {
+    Map<String, String> payload = super.toMap();
+
+    payload['notificationUuid'] = notificationUuid ?? '';
+    payload['promotionalCode'] = promotionalCode ?? '';
+
+    return payload;
+  }
+
+  @override
+  String toString() {
+    return (actionButtonPressed != null && actionButtonPressed.isNotEmpty ? actionButtonPressed + ': '  : '' ) +
+              notificationUuid ?? '"Empty notification uuid"';
+  }
+
 }
+
+
+
+
 
 /// IMPORTANT: running the following code on its own won't work as there is setup required for each platform head project.
 /// Please download the complete example app from the GitHub repository where all the setup has been done
 Future<void> main() async {
+
   // needed if you intend to initialize in the `main` function
   WidgetsFlutterBinding.ensureInitialized();
-  // NOTE: if you want to find out if the app was launched via notification then you could use the following call and then do something like
-  // change the default route of the app
-  // var notificationAppLaunchDetails =
-  //     await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
 
-  var initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
-  var initializationSettingsIOS = IOSInitializationSettings(
-      onDidReceiveLocalNotification:
-          (int id, String title, String body, String payload) async {
-    didReceiveLocalNotificationSubject.add(ReceivedNotification(
-        id: id, title: title, body: body, payload: payload));
-  });
-  var initializationSettings = InitializationSettings(
-      initializationSettingsAndroid, initializationSettingsIOS);
-
-  await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      /* DEPRECATED AND UNSECURE
-      onSelectNotification: (String payload) async {
-      if (payload != null) {
-        debugPrint('notification payload: ' + payload);
-      }
-      selectNotificationSubject.add(payload);
-      }*/
-      onReceiveNotification: (Map<dynamic, dynamic> response) async {
-        if (response['payload'] != null) {
-          debugPrint('notification payload: ' + response['payload']);
-        }
-        selectNotificationSubject.add(
-            ( response['action_key'] != null ? response['action_key'] + ': ' : '' ) + response['payload']
-        );
-      }
-  );
-  runApp(
-    MaterialApp(
-      home: HomePage(),
-    ),
-  );
+  runApp(MaterialApp( home: HomePage() ));
 }
 
-class PaddedRaisedButton extends StatelessWidget {
-  final String buttonText;
-  final VoidCallback onPressed;
-  const PaddedRaisedButton(
-      {@required this.buttonText, @required this.onPressed});
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 8.0),
-      child: RaisedButton(child: Text(buttonText), onPressed: onPressed),
-    );
-  }
-}
+
 
 class HomePage extends StatefulWidget {
   @override
@@ -107,6 +87,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
+  InitializationSettings initializationSettings;
 
   final MethodChannel platform =
       MethodChannel('crossingthestreams.io/resourceResolver');
@@ -116,53 +98,59 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    didReceiveLocalNotificationSubject.stream
-        .listen((ReceivedNotification receivedNotification) async {
-      await showDialog(
-        context: context,
-        builder: (BuildContext context) => CupertinoAlertDialog(
-          title: receivedNotification.title != null
-              ? Text(receivedNotification.title)
-              : null,
-          content: receivedNotification.body != null
-              ? Text(receivedNotification.body)
-              : null,
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: Text('Ok'),
-              onPressed: () async {
-                Navigator.of(context, rootNavigator: true).pop();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        SecondScreen(receivedNotification.payload),
-                  ),
-                );
-              },
-            )
-          ],
-        ),
-      );
-    });
-    selectNotificationSubject.stream.listen((String payload) async {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => SecondScreen(payload)),
-      );
-    });
+
+    // NOTE: if you want to find out if the app was launched via notification then you could use the following call and then do something like
+    // change the default route of the app
+    // var notificationAppLaunchDetails =
+    //     await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+
+    initializationSettings = InitializationSettings( AndroidInitializationSettings('app_icon'), IOSInitializationSettings() );
   }
 
   @override
   void dispose() {
-    didReceiveLocalNotificationSubject.close();
-    selectNotificationSubject.close();
     super.dispose();
   }
 
+  void listenNotifications(BuildContext context) async {
+
+    await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onReceiveNotification: (Map<String, dynamic> response) async {
+
+          debugPrint('Notification id received: '+response['notification_id'].toString());
+
+          if (response['payload'] != null) {
+            switch (response['payload']['type']) {
+
+              case 'PlainTextPayload':
+
+                PlainTextPayload payload = PlainTextPayload().fromMap(response);
+                await Navigator.push( context, MaterialPageRoute( builder: (context) =>
+                    SecondScreen(payload)
+                ));
+                break;
+
+              case 'PromotionalPayload':
+
+                PromotionalPayload payload = PromotionalPayload().fromMap(response);
+                await Navigator.push( context, MaterialPageRoute( builder: (context) =>
+                    SecondScreen(payload)
+                ));
+
+                break;
+            }
+          }
+        }
+    );
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
+
+    listenNotifications(context);
 
     MediaQueryData mediaQuery = MediaQuery.of(context);
 
@@ -184,8 +172,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(title,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: mediaQuery.size.width / 2),
+                      child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      )
                   ),
                   Expanded(
                       child: remarkableDivisor
@@ -276,6 +269,14 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
+    _launchExternalURL(String url) async {
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        throw 'Could not launch $url';
+      }
+    }
+
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -288,11 +289,31 @@ class _HomePageState extends State<HomePage> {
                 children: <Widget>[
 
                   /* ******************************************************************** */
+                  renderDivisor( title: 'Notifications with Object payload vs plaintext payload' ),
+                  renderNote('Topic discussed on GitHub bellow:'),
+                  FlatButton(
+                      padding: EdgeInsets.only(bottom: 10),
+                      child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Github link (opens externally)', textAlign: TextAlign.left, style: TextStyle( color: Colors.blue, decoration: TextDecoration.underline )),
+                      ),
+                      onPressed: () => _launchExternalURL('https://github.com/MaikuB/flutter_local_notifications/issues/378')
+                  ),
+                  renderSimpleButton(
+                      'Show plain notification with plaintext payload',
+                      onPressed: _showNotification
+                  ),
+                  renderSimpleButton(
+                      'Show plain notification with payload object',
+                      onPressed: _showNotificationWithPayloadObject
+                  ),
+
+                  /* ******************************************************************** */
                   renderDivisor( title: 'Plain Notifications' ),
                   renderNote('Tap on a notification when it appears to trigger navigation'),
                   renderSimpleButton(
                       'Show plain notification with payload',
-                      onPressed: _showNotification
+                      onPressed: _showNotificationWithPayloadObject
                   ),
                   renderSimpleButton(
                     'Show plain notification with payload and action buttons',
@@ -505,6 +526,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+
+
+
+  /* **********************************************************
+  *
+  * Show Notification Methods
+  *
+  ********************************************************** */
+
+
   Future<void> _showNotification() async {
     var androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'your channel id', 'your channel name', 'your channel description',
@@ -515,7 +546,26 @@ class _HomePageState extends State<HomePage> {
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
         0, 'plain title', 'plain body', platformChannelSpecifics,
-        payload: 'item x');
+        payload: PlainTextPayload(
+            plainText: 'item x'
+        )
+    );
+  }
+
+  Future<void> _showNotificationWithPayloadObject() async {
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your channel id', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker'
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        0, 'plain title', 'plain body', platformChannelSpecifics,
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        )
+    );
   }
 
   Future<void> _showNotificationWithButtons() async {
@@ -539,7 +589,10 @@ class _HomePageState extends State<HomePage> {
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
         0, 'plain title', 'plain body', platformChannelSpecifics,
-        payload: 'item x');
+        payload: PromotionalPayload(
+          notificationUuid: 'uuid-test'
+        )
+    );
   }
 
   Future<void> _showNotificationWithNoBody() async {
@@ -551,7 +604,10 @@ class _HomePageState extends State<HomePage> {
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
         0, 'plain title', null, platformChannelSpecifics,
-        payload: 'item x');
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        )
+    );
   }
 
   Future<void> _cancelNotification() async {
@@ -594,7 +650,9 @@ class _HomePageState extends State<HomePage> {
         body ?? 'body',
         scheduledNotificationDateTime,
         platformChannelSpecifics,
-        payload: payload ?? 'item Z',
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        )
       );
 
     } else {
@@ -604,7 +662,9 @@ class _HomePageState extends State<HomePage> {
         title ?? 'title',
         body ?? 'body',
         platformChannelSpecifics,
-        payload: payload ?? 'item Z',
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        )
       );
 
     }
@@ -1011,7 +1071,9 @@ class _HomePageState extends State<HomePage> {
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
         0, 'no badge title', 'no badge body', platformChannelSpecifics,
-        payload: 'item x');
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        ));
   }
 
   Future<void> _showProgressNotification() async {
@@ -1037,7 +1099,9 @@ class _HomePageState extends State<HomePage> {
             'progress notification title',
             'progress notification body',
             platformChannelSpecifics,
-            payload: 'item x');
+            payload: PromotionalPayload(
+                notificationUuid: 'uuid-test'
+            ));
       });
     }
   }
@@ -1061,7 +1125,9 @@ class _HomePageState extends State<HomePage> {
         'indeterminate progress notification title',
         'indeterminate progress notification body',
         platformChannelSpecifics,
-        payload: 'item x');
+        payload: PromotionalPayload(
+          notificationUuid: 'uuid-test'
+        ));
   }
 
   Future<void> _showNotificationWithUpdatedChannelDescription() async {
@@ -1080,62 +1146,25 @@ class _HomePageState extends State<HomePage> {
         'updated notification channel',
         'check settings to see updated channel description',
         platformChannelSpecifics,
-        payload: 'item x');
+        payload: PromotionalPayload(
+            notificationUuid: 'uuid-test'
+        ));
   }
 
   String _toTwoDigitString(int value) {
     return value.toString().padLeft(2, '0');
   }
 
-  Future<void> onDidReceiveLocalNotification(
-      int id, String title, String body, String payload) async {
-    // display a dialog with the notification details, tap ok to go to another page
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) => CupertinoAlertDialog(
-        title: title != null ? Text(title) : null,
-        content: body != null ? Text(body) : null,
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: Text('Ok'),
-            onPressed: () async {
-              Navigator.of(context, rootNavigator: true).pop();
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SecondScreen(payload),
-                ),
-              );
-            },
-          )
-        ],
-      ),
-    );
-  }
 }
 
-class SecondScreen extends StatefulWidget {
+class SecondScreen extends StatelessWidget {
+
+  final Payload payload;
+
   SecondScreen(this.payload);
-
-  final String payload;
-
-  @override
-  State<StatefulWidget> createState() => SecondScreenState();
-}
-
-class SecondScreenState extends State<SecondScreen> {
-  String _payload;
-  @override
-  void initState() {
-    super.initState();
-    _payload = widget.payload;
-  }
 
   @override
   Widget build(BuildContext context) {
-
-    MediaQueryData mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -1150,7 +1179,7 @@ class SecondScreenState extends State<SecondScreen> {
               children: <Widget>[
                 Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),),
                 SizedBox(height: 20 ),
-                Text((_payload == null || _payload == '') ? '"Empty payload"' : _payload, style: TextStyle(fontSize: 16)),
+                Text(payload.toString(),  style: TextStyle(fontSize: 16)),
                 SizedBox(height: 20),
                 RaisedButton(
                     onPressed: () {

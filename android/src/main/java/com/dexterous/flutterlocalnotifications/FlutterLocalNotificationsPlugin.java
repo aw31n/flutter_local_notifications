@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.io.Serializable;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -119,8 +120,10 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         setupNotificationChannel(context, notificationDetails);
         Intent intent = new Intent(context, getMainActivityClass(context));
         intent.setAction(SELECT_NOTIFICATION);
-        intent.putExtra(PAYLOAD, notificationDetails.payload);
         intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+
+        setPayload(intent, notificationDetails);
+
         PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationDetails.id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         DefaultStyleInformation defaultStyleInformation = (DefaultStyleInformation) notificationDetails.styleInformation;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationDetails.channelId)
@@ -155,37 +158,56 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         return builder.build();
     }
 
+    @SuppressWarnings("unchecked")
+    public static void setPayload(Intent intent, NotificationDetails notificationDetails) {
+        if (notificationDetails.payload != null) {
+
+            HashMap<String, String> hashMapCopy =
+                    (notificationDetails.payload instanceof HashMap)
+                            ? (HashMap) notificationDetails.payload
+                            : null;
+
+            intent.putExtra(PAYLOAD, hashMapCopy);
+        }
+    }
+
     @NonNull
+    @SuppressWarnings("unchecked")
     public static void createActionButtons(Map<String, Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
 
         for(Map.Entry<String, Object> entry : actionButtons.entrySet()) {
 
-            String buttonKey = entry.getKey();
-            Map<String, Object> buttonProperties = (Map<String, Object>) entry.getValue();
+            Object valueObject = entry.getValue();
+            if( valueObject instanceof Map<?,?> ) {
 
-            String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
-            boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
+                String buttonKey = entry.getKey();
+                Map<String, Object> buttonProperties = (Map<String, Object>) valueObject;
 
-            System.out.println("buttonKey: " + buttonKey);
-            System.out.println("buttonName: " + buttonName);
+                String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
+                boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
 
-            Intent actionIntent = new Intent(context, getMainActivityClass(context));
+                System.out.println("buttonKey: " + buttonKey);
+                System.out.println("buttonName: " + buttonName);
 
-            actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
-            actionIntent.putExtra(AUTO_CANCEL, autoCancel);
-            actionIntent.putExtra(PAYLOAD, notificationDetails.payload);
-            actionIntent.putExtra(NOTIFICATION_ID,  notificationDetails.id);
-            actionIntent.putExtra(ACTION_KEY, buttonKey);
+                Intent actionIntent = new Intent(context, getMainActivityClass(context));
 
-            PendingIntent actionPendingIntent = PendingIntent.getActivity(
-                context,
-                notificationDetails.id,
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-            );
+                actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
+                actionIntent.putExtra(AUTO_CANCEL, autoCancel);
 
-            builder.addAction(0, buttonName, actionPendingIntent);
+                actionIntent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+                actionIntent.putExtra(ACTION_KEY, buttonKey);
 
+                setPayload(actionIntent, notificationDetails);
+
+                PendingIntent actionPendingIntent = PendingIntent.getActivity(
+                        context,
+                        notificationDetails.id,
+                        actionIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                );
+
+                builder.addAction(0, buttonName, actionPendingIntent);
+            }
         }
     }
 
@@ -867,19 +889,9 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         String action_name = intent.getAction();
 
         if (
-                SELECT_NOTIFICATION.equals(action_name) ||
-                action_name.startsWith(ACTION_NOTIFICATION)
+            SELECT_NOTIFICATION.equals(action_name) ||
+            action_name.startsWith(ACTION_NOTIFICATION)
         ) {
-
-            // ****************** DEPRECATED AND UNSECURE *******************
-            //
-            // https://github.com/MaikuB/flutter_local_notifications/issues/378
-            //
-            // **************************************************************
-            String payload = intent.getStringExtra(PAYLOAD);
-            channel.invokeMethod("selectNotification", payload);
-            // ****************** DEPRECATED AND UNSECURE *******************
-
 
             Map<String, Object> returnObject = new HashMap<>();
 
@@ -887,13 +899,28 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             returnObject.put("notification_id", notification_id);
             returnObject.put("action_key", intent.getStringExtra(ACTION_KEY));
-            returnObject.put("payload", intent.getStringExtra(PAYLOAD));
+
+            //Serializable serializable = intent.getSerializableExtra(PAYLOAD);
+            Map<String, String> payloadObject = intent.getSerializableExtra(PAYLOAD) != null ? (Map<String, String>) intent.getSerializableExtra(PAYLOAD) : null;
+            returnObject.put("payload", payloadObject);
 
             if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){
                 cancelNotification(new Integer(notification_id));
             }
 
+            System.out.println("Notification received java: "+returnObject.toString());
+
             channel.invokeMethod("receiveNotification", returnObject);
+
+
+            // ****************** DEPRECATED AND UNSECURE *******************
+            //
+            // https://github.com/MaikuB/flutter_local_notifications/issues/378
+            //
+            // **************************************************************
+            //String payloadPlainText = payloadObject != null ? payloadObject.get("payload") : "";
+            //channel.invokeMethod("selectNotification", payloadPlainText != null ? payloadPlainText : "");
+            // ****************** DEPRECATED AND UNSECURE *******************
 
             return true;
         }

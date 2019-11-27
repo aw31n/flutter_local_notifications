@@ -5,13 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() {
+
   MockMethodChannel mockChannel;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   const id = 0;
   const title = 'title';
   const body = 'body';
   const payload = 'payload';
-
+/*
   group('ios', () {
     setUp(() {
       mockChannel = MockMethodChannel();
@@ -134,6 +135,7 @@ void main() {
       verify(mockChannel.invokeMethod('cancel', id));
     });
   });
+  */
 }
 
 class MockMethodChannel extends Mock implements MethodChannel {}
