@@ -327,6 +327,7 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 }
 
 - (void) showUserNotification:(NotificationDetails *) notificationDetails NS_AVAILABLE_IOS(10.0) {
+
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     UNNotificationTrigger *trigger;
     content.title = notificationDetails.title;
@@ -338,7 +339,15 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             content.sound = [UNNotificationSound soundNamed:notificationDetails.sound];
         }
     }
-    content.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:notificationDetails.payload];
+    content.userInfo = [self
+        buildUserDict:notificationDetails.id
+        title:notificationDetails.title
+        presentAlert:notificationDetails.presentAlert
+        presentSound:notificationDetails.presentSound
+        presentBadge:notificationDetails.presentBadge
+        payload:notificationDetails.payload
+    ];
+
     if(notificationDetails.secondsSinceEpoch == nil) {
         NSTimeInterval timeInterval = 0.1;
         Boolean repeats = NO;
@@ -385,9 +394,38 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
                                                                     NSCalendarUnitSecond) fromDate:date];
         trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:dateComponents repeats:false];
     }
+
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+
+    // https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SupportingNotificationsinYourApp.html
+
+    UNNotificationAction *acceptAction = [UNNotificationAction
+        actionWithIdentifier: @"ACCEPT_ACTION"
+        title: @"Accept"
+        options: UNNotificationActionOptionNone
+    ];
+
+    UNNotificationAction *declineAction = [UNNotificationAction
+        actionWithIdentifier: @"DECLINE_ACTION"
+        title: @"Decline"
+        options: UNNotificationActionOptionForeground
+    ];
+
+    // Define the notification type
+    UNNotificationCategory *meetingInviteCategory = [UNNotificationCategory
+          categoryWithIdentifier: @"MEETING_INVITATION"
+          actions: @[acceptAction, declineAction]
+          intentIdentifiers: @[]
+          options: UNNotificationCategoryOptionNone
+    ];
+
+    content.categoryIdentifier = @"MEETING_INVITATION";
+
     UNNotificationRequest* notificationRequest = [UNNotificationRequest
                                                   requestWithIdentifier:[notificationDetails.id stringValue] content:content trigger:trigger];
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+
+    [center setNotificationCategories:[NSSet setWithObjects: meetingInviteCategory, nil]];
+
     [center addNotificationRequest:notificationRequest withCompletionHandler:^(NSError * _Nullable error) {
         if (error != nil) {
             NSLog(@"Unable to Add Notification Request");
@@ -410,7 +448,7 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             notification.soundName = notificationDetails.sound;
         }
     }
-    
+
     notification.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:notificationDetails.payload];
     if(notificationDetails.secondsSinceEpoch == nil) {
         if(notificationDetails.repeatInterval != nil) {
