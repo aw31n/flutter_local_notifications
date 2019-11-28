@@ -15,6 +15,7 @@ import com.dexterous.flutterlocalnotifications.models.styles.StyleInformation;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public class NotificationDetails {
@@ -144,7 +145,7 @@ public class NotificationDetails {
     public Integer ledOffMs;
     public String ticker;
     public Boolean allowWhileIdle;
-    public Map<String, Object> actionButtons;
+    public List<Object> actionButtons;
 
 
     // Note: this is set on the Android to save details about the icon that should be used when re-hydrating scheduled notifications when a device has been restarted.
@@ -156,6 +157,9 @@ public class NotificationDetails {
         notificationDetails.title = (String) arguments.get(TITLE);
         notificationDetails.body = (String) arguments.get(BODY);
 
+        if (arguments.containsKey(ACTION_BUTTONS)) {
+            readButtons(notificationDetails, arguments.get(ACTION_BUTTONS));
+        }
         if (arguments.containsKey(MILLISECONDS_SINCE_EPOCH)) {
             notificationDetails.millisecondsSinceEpoch = (Long) arguments.get(MILLISECONDS_SINCE_EPOCH);
         }
@@ -212,7 +216,6 @@ public class NotificationDetails {
             readColor(notificationDetails, platformChannelSpecifics);
             readChannelInformation(notificationDetails, platformChannelSpecifics);
             readLedInformation(notificationDetails, platformChannelSpecifics);
-            readButtons(notificationDetails, platformChannelSpecifics);
 
             notificationDetails.largeIcon = (String) platformChannelSpecifics.get(LARGE_ICON);
 
@@ -230,17 +233,15 @@ public class NotificationDetails {
     }
 
     @SuppressWarnings("unchecked")
-    private static void readButtons(NotificationDetails notificationDetails, Map<String, Object> platformChannelSpecifics) {
+    private static void readButtons(NotificationDetails notificationDetails, Object argumentValue) {
 
         // Using the constant ACTION_BUTTONS makes the app crashes in some platforms for a unknown reason.
         // Seems like a recent Grove issue.
         // Because of that i do not used the standard here.
 
-        if (platformChannelSpecifics.containsKey("actionButtons"/*ACTION_BUTTONS*/)) {
-            Object argumentValue = platformChannelSpecifics.get("actionButtons"/*ACTION_BUTTONS*/);
-            if (argumentValue != null && argumentValue instanceof Map<?,?>) {
-                notificationDetails.actionButtons = (Map<String, Object>) argumentValue;
-            }
+        System.out.println("action buttons add");
+        if (argumentValue != null && argumentValue instanceof List<?>) {
+            notificationDetails.actionButtons = (List<Object>) argumentValue;
         }
     }
 

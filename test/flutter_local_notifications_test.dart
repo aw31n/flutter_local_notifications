@@ -12,7 +12,7 @@ void main() {
   const title = 'title';
   const body = 'body';
   const payload = 'payload';
-/*
+
   group('ios', () {
     setUp(() {
       mockChannel = MockMethodChannel();
@@ -135,7 +135,7 @@ void main() {
       verify(mockChannel.invokeMethod('cancel', id));
     });
   });
-  */
+  
 }
 
 class MockMethodChannel extends Mock implements MethodChannel {}

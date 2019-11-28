@@ -1,19 +1,28 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/src/payload.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_local_notifications/src/notification_content.dart';
 import 'package:meta/meta.dart';
 import 'package:platform/platform.dart';
 import 'initialization_settings.dart';
 import 'notification_app_launch_details.dart';
 import 'notification_details.dart';
 import 'pending_notification_request.dart';
+import 'package:ansicolor/ansicolor.dart';
 
 /// Signature of callback passed to [initialize]. Callback triggered when user taps on a notification
 
+// ************** ABOUT DEPRECATED AND UNSECURE METHODS *******************
+//
+// https://github.com/MaikuB/flutter_local_notifications/issues/378
+//
+// ************************************************************************
+
 // TODO DEPRECATED
 typedef SelectNotificationCallback = Future<dynamic> Function(String payload);
-typedef ReceiveNotificationCallback = Future<dynamic> Function(Map<String, dynamic> payload);
+typedef ReceiveNotificationCallback = Future<dynamic> Function(NotificationInteractionDetails returnDetails);
 
 // Signature of the callback that is triggered when a notification is shown whilst the app is in the foreground. Applicable to iOS versions < 10 only
 typedef DidReceiveLocalNotificationCallback = Future<dynamic> Function(
@@ -85,8 +94,26 @@ class FlutterLocalNotificationsPlugin {
 
   SelectNotificationCallback  selectNotificationCallback;
   ReceiveNotificationCallback receiveNotificationCallback;
+  DidReceiveLocalNotificationCallback didReceiveLocalNotificationCallback;
 
-  //DidReceiveLocalNotificationCallback didReceiveLocalNotificationCallback;
+  void _validateId(int id) {
+    if (id > 0x7FFFFFFF || id < -0x80000000) {
+      throw ArgumentError(
+          'id must fit within the size of a 32-bit integer i.e. in the range [-2^31, 2^31 - 1]');
+    }
+  }
+
+  _showDeprecatedWarning(){
+    AnsiPen pen = AnsiPen()..white(bold: true)..rgb(r: 1.0, g: 0.0, b: 0.0);
+
+    // TODO link example
+    debugPrint(
+      pen("*************  WARNING: YOU ARE USING A DEPRECATED METHOD  *******************\n")+
+      pen("** Do not pass plain text over notifications. Use Payload object instead.\n")+
+      pen("** Examples at XXXXXXXX\n")+
+      pen("*****************************************************************************")
+    );
+  }
 
   /// Initializes the plugin. Call this method on application before using the plugin further. This should only be done once. When a notification created by this plugin was used to launch the app, calling `initialize` is what will trigger to the `onSelectNotification` callback to be fire.
   Future<bool> initialize(InitializationSettings initializationSettings,
@@ -98,8 +125,8 @@ class FlutterLocalNotificationsPlugin {
     selectNotificationCallback  = onSelectNotification;
     receiveNotificationCallback = onReceiveNotification;
 
-    /*didReceiveLocalNotificationCallback =
-        initializationSettings?.ios?.onDidReceiveLocalNotification;*/
+    didReceiveLocalNotificationCallback =
+        initializationSettings?.ios?.onDidReceiveLocalNotification;
 
     var serializedPlatformSpecifics =
         _retrievePlatformSpecificInitializationSettings(initializationSettings);
@@ -125,20 +152,218 @@ class FlutterLocalNotificationsPlugin {
         result.containsKey('payload') ? result['payload'] : null);
   }
 
-  /// Show a notification with an optional payload that will be passed back to the app when a notification is tapped
-  Future<void> show(int id, String title, String body,
+  Map<String, String> _getDeprecatedPayload(String payload){
+    return {
+      'deprecated': 'true',
+      'plainText': payload ?? ''
+    };
+  }
+
+  /// (DEPRECATED) Show a notification with an optional payload that will be passed back to the app when a notification is tapped
+  @Deprecated('This method incentives unsecure practices')
+  Future<void> show(
+      int id, String title, String body,
       NotificationDetails notificationDetails,
-      {Payload payload}) async {
-    _validateId(id);
+      {String payload}) async {
+
+    // TODO Remove deprecated methods
+    _showDeprecatedWarning();
+
+    NotificationContent notificationContent =
+        NotificationContent(
+          id: id,
+          title: title,
+          body: body,
+          payload: _getDeprecatedPayload(payload)
+        );
+
+    return showNotification(notificationDetails, notificationContent);
+  }
+
+  /// Show a notification with an optional payload that will be passed back to the app when a notification is tapped
+  Future<void> showNotification(NotificationDetails notificationDetails, NotificationContent notificationContent) async {
+    _validateId(notificationContent.id);
+
+    var serializedPlatformSpecifics = _retrievePlatformSpecificNotificationDetails(notificationDetails);
+    await _channel.invokeMethod(
+        'show',
+        notificationContent.toMap()..addAll({
+          'platformSpecifics': serializedPlatformSpecifics
+        })
+    );
+  }
+
+  /// Schedules a notification to be shown at the specified time with an optional payload that is passed through when a notification is tapped
+  /// The [androidAllowWhileIdle] parameter is Android-specific and determines if the notification should still be shown at the specified time
+  /// even when in a low-power idle mode.
+  @Deprecated('This method incentives unsecure practices')
+  Future<void> schedule(int id, String title, String body,
+      DateTime scheduledDate, NotificationDetails notificationDetails,
+      {String payload, bool androidAllowWhileIdle = false}) async {
+
+    // TODO Remove deprecated methods
+    _showDeprecatedWarning();
+
+    return showNotificationSchedule(
+        scheduledDate,
+        notificationDetails,
+        androidAllowWhileIdle: androidAllowWhileIdle,
+        notificationContent: NotificationContent(
+          id: id,
+          title: title,
+          body: body,
+          payload: _getDeprecatedPayload(payload)
+        )
+    );
+  }
+
+  Future<void> showNotificationSchedule(
+      DateTime scheduledDate,
+      NotificationDetails notificationDetails,
+      {
+        NotificationContent notificationContent,
+        bool androidAllowWhileIdle = false
+      }) async {
+
+    _validateId(notificationContent.id);
+
     var serializedPlatformSpecifics =
-        _retrievePlatformSpecificNotificationDetails(notificationDetails);
-    await _channel.invokeMethod('show', <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload != null ? payload.toMap() : ''
-    });
+          _retrievePlatformSpecificNotificationDetails(notificationDetails);
+
+    if (_platform.isAndroid) {
+      serializedPlatformSpecifics['allowWhileIdle'] = androidAllowWhileIdle;
+    }
+
+    await _channel.invokeMethod(
+        'schedule',
+        notificationContent.toMap()..addAll({
+          'millisecondsSinceEpoch': scheduledDate.millisecondsSinceEpoch,
+          'platformSpecifics': serializedPlatformSpecifics,
+        })
+    );
+  }
+
+
+
+  /// Periodically show a notification using the specified interval.
+  /// For example, specifying a hourly interval means the first time the notification will be an hour after the method has been called and then every hour after that.
+  @Deprecated('This method incentives unsecure practices')
+  Future<void> periodicallyShow(int id, String title, String body,
+      RepeatInterval repeatInterval, NotificationDetails notificationDetails,
+      {String payload}) async {
+
+    // TODO Remove deprecated methods
+    _showDeprecatedWarning();
+
+    return showNotificationPeriodically(
+      repeatInterval,
+      notificationDetails,
+      NotificationContent(
+        id: id,
+        title: title,
+        body: body,
+        payload: _getDeprecatedPayload(payload)
+      )
+    );
+  }
+
+  Future<void> showNotificationPeriodically(
+        RepeatInterval repeatInterval, NotificationDetails notificationDetails, NotificationContent notificationContent
+      ) async {
+
+    _validateId(notificationContent.id);
+
+    var serializedPlatformSpecifics =
+    _retrievePlatformSpecificNotificationDetails(notificationDetails);
+
+    await _channel.invokeMethod(
+        'periodicallyShow',
+        notificationContent.toMap()..addAll({
+          'calledAt': DateTime.now().millisecondsSinceEpoch,
+          'repeatInterval': repeatInterval.index,
+          'platformSpecifics': serializedPlatformSpecifics,
+        })
+    );
+  }
+
+  /// Shows a notification on a daily interval at the specified time
+  @Deprecated('This method incentives unsecure practices')
+  Future<void> showDailyAtTime(int id, String title, String body,
+      Time notificationTime, NotificationDetails notificationDetails,
+      {String payload}) async {
+
+    // TODO Remove deprecated methods
+    _showDeprecatedWarning();
+
+    return showNotificationDailyAtTime(notificationTime, notificationDetails,
+      NotificationContent(
+          id: id,
+          title: title,
+          body: body,
+          payload: _getDeprecatedPayload(payload)
+      )
+    );
+  }
+
+  /// Shows a notification on a daily interval at the specified time
+  Future<void> showNotificationDailyAtTime(
+      Time notificationTime, NotificationDetails notificationDetails, NotificationContent notificationContent
+  ) async {
+
+    _validateId(notificationContent.id);
+
+    var serializedPlatformSpecifics =
+      _retrievePlatformSpecificNotificationDetails(notificationDetails);
+
+    await _channel.invokeMethod(
+        'showDailyAtTime',
+        notificationContent.toMap()..addAll({
+          'calledAt': DateTime.now().millisecondsSinceEpoch,
+          'repeatInterval': RepeatInterval.Daily.index,
+          'repeatTime': notificationTime.toMap(),
+          'platformSpecifics': serializedPlatformSpecifics,
+        })
+    );
+  }
+
+  /// Shows a notification on a daily interval at the specified time
+  @Deprecated('This method incentives unsecure practices')
+  Future<void> showWeeklyAtDayAndTime(int id, String title, String body,
+      Day day, Time notificationTime, NotificationDetails notificationDetails,
+      {String payload}) async {
+
+    // TODO Remove deprecated methods
+    _showDeprecatedWarning();
+
+    return showNotificationWeeklyAtDayAndTime(day, notificationTime, notificationDetails,
+      NotificationContent(
+          id: id,
+          title: title,
+          body: body,
+          payload: _getDeprecatedPayload(payload)
+      )
+    );
+  }
+
+  Future<void> showNotificationWeeklyAtDayAndTime(
+      Day day, Time notificationTime, NotificationDetails notificationDetails, NotificationContent notificationContent
+  ) async {
+
+    _validateId(notificationContent.id);
+
+    var serializedPlatformSpecifics =
+    _retrievePlatformSpecificNotificationDetails(notificationDetails);
+
+    await _channel.invokeMethod(
+        'showWeeklyAtDayAndTime',
+        notificationContent.toMap()..addAll({
+          'calledAt': DateTime.now().millisecondsSinceEpoch,
+          'repeatInterval': RepeatInterval.Weekly.index,
+          'repeatTime': notificationTime.toMap(),
+          'day': day.value,
+          'platformSpecifics': serializedPlatformSpecifics,
+        })
+    );
   }
 
   /// Cancel/remove the notification with the specified id. This applies to notifications that have been scheduled and those that have already been presented.
@@ -152,90 +377,12 @@ class FlutterLocalNotificationsPlugin {
     await _channel.invokeMethod('cancelAll');
   }
 
-  /// Schedules a notification to be shown at the specified time with an optional payload that is passed through when a notification is tapped
-  /// The [androidAllowWhileIdle] parameter is Android-specific and determines if the notification should still be shown at the specified time
-  /// even when in a low-power idle mode.
-  Future<void> schedule(int id, String title, String body,
-      DateTime scheduledDate, NotificationDetails notificationDetails,
-      {Payload payload, bool androidAllowWhileIdle = false}) async {
-    _validateId(id);
-    var serializedPlatformSpecifics =
-        _retrievePlatformSpecificNotificationDetails(notificationDetails);
-    if (_platform.isAndroid) {
-      serializedPlatformSpecifics['allowWhileIdle'] = androidAllowWhileIdle;
-    }
-    await _channel.invokeMethod('schedule', <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'millisecondsSinceEpoch': scheduledDate.millisecondsSinceEpoch,
-      'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload != null ? payload.toMap() : ''
-    });
-  }
-
-  /// Periodically show a notification using the specified interval.
-  /// For example, specifying a hourly interval means the first time the notification will be an hour after the method has been called and then every hour after that.
-  Future<void> periodicallyShow(int id, String title, String body,
-      RepeatInterval repeatInterval, NotificationDetails notificationDetails,
-      {Payload payload}) async {
-    _validateId(id);
-    var serializedPlatformSpecifics =
-        _retrievePlatformSpecificNotificationDetails(notificationDetails);
-    await _channel.invokeMethod('periodicallyShow', <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'calledAt': DateTime.now().millisecondsSinceEpoch,
-      'repeatInterval': repeatInterval.index,
-      'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload != null ? payload.toMap() : ''
-    });
-  }
-
-  /// Shows a notification on a daily interval at the specified time
-  Future<void> showDailyAtTime(int id, String title, String body,
-      Time notificationTime, NotificationDetails notificationDetails,
-      {Payload payload}) async {
-    _validateId(id);
-    var serializedPlatformSpecifics =
-        _retrievePlatformSpecificNotificationDetails(notificationDetails);
-    await _channel.invokeMethod('showDailyAtTime', <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'calledAt': DateTime.now().millisecondsSinceEpoch,
-      'repeatInterval': RepeatInterval.Daily.index,
-      'repeatTime': notificationTime.toMap(),
-      'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload != null ? payload.toMap() : ''
-    });
-  }
-
-  /// Shows a notification on a daily interval at the specified time
-  Future<void> showWeeklyAtDayAndTime(int id, String title, String body,
-      Day day, Time notificationTime, NotificationDetails notificationDetails,
-      {Payload payload}) async {
-    _validateId(id);
-    var serializedPlatformSpecifics =
-        _retrievePlatformSpecificNotificationDetails(notificationDetails);
-    await _channel.invokeMethod('showWeeklyAtDayAndTime', <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'calledAt': DateTime.now().millisecondsSinceEpoch,
-      'repeatInterval': RepeatInterval.Weekly.index,
-      'repeatTime': notificationTime.toMap(),
-      'day': day.value,
-      'platformSpecifics': serializedPlatformSpecifics,
-      'payload': payload != null ? payload.toMap() : ''
-    });
-  }
-
   /// Returns a list of notifications pending to be delivered/shown
   Future<List<PendingNotificationRequest>> pendingNotificationRequests() async {
+
     final List<Map<dynamic, dynamic>> pendingNotifications =
         await _channel.invokeListMethod('pendingNotificationRequests');
+
     return pendingNotifications
         .map((pendingNotification) => PendingNotificationRequest(
             pendingNotification['id'],
@@ -247,63 +394,80 @@ class FlutterLocalNotificationsPlugin {
 
   Map<String, dynamic> _retrievePlatformSpecificNotificationDetails(
       NotificationDetails notificationDetails) {
+
     Map<String, dynamic> serializedPlatformSpecifics;
+
     if (_platform.isAndroid) {
       serializedPlatformSpecifics = notificationDetails?.android?.toMap();
     } else if (_platform.isIOS) {
       serializedPlatformSpecifics = notificationDetails?.iOS?.toMap();
     }
+
     return serializedPlatformSpecifics;
   }
 
   Map<String, dynamic> _retrievePlatformSpecificInitializationSettings(
       InitializationSettings initializationSettings) {
+
     Map<String, dynamic> serializedPlatformSpecifics;
+
     if (_platform.isAndroid) {
       serializedPlatformSpecifics = initializationSettings?.android?.toMap();
     } else if (_platform.isIOS) {
       serializedPlatformSpecifics = initializationSettings?.ios?.toMap();
     }
+
     return serializedPlatformSpecifics;
   }
 
   Future<void> _handleMethod(MethodCall call) {
 
-    print('handle received');
-
-    Map<String, dynamic> arguments;
-
-    switch (call.method) {
-      case 'selectNotification':
-      case 'receiveNotification':
-      case 'didReceiveLocalNotification':
-        arguments = Map<String, dynamic>.from(call.arguments);
-        arguments['payload'] = Map<String, String>.from(arguments['payload']);
-    }
+    Map<String, dynamic> arguments = Map<String, dynamic>.from(call.arguments);
 
     switch (call.method) {
 
-      case 'selectNotification':
-        // DEPRECATED AND UNSECURE
-        return selectNotificationCallback(arguments['payload'].toString());
-
       case 'receiveNotification':
-        //call.arguments['isReceivedForeground'] = false;
-        return receiveNotificationCallback(arguments);
+
+        // keep the deprecated method working for a while
+        if(call.arguments['payload'] != null && call.arguments['payload']['deprecated'] != null){
+
+          return selectNotificationCallback(
+              //(call.arguments['action_key'] != null ? call.arguments['action_key']+'::' : '') +
+              call.arguments['payload']['plainText'] ?? ''
+          );
+
+        } else {
+
+          //call.arguments['isReceivedForeground'] = false;
+          return receiveNotificationCallback(
+              NotificationInteractionDetails().fromMap(arguments)
+          );
+        }
+        break;
 
       case 'didReceiveLocalNotification':
-      //call.arguments['isReceivedForeground'] = true;
-        return receiveNotificationCallback(arguments);
+
+        // keep the deprecated method working for a while
+        if(call.arguments['payload'] != null && call.arguments['payload']['deprecated'] != null){
+
+          return didReceiveLocalNotificationCallback(
+              call.arguments['id'],
+              call.arguments['title'],
+              call.arguments['body'],
+              call.arguments['payload']['plainText'] ?? ''
+          );
+
+        } else {
+
+          //call.arguments['isReceivedForeground'] = true;
+          return receiveNotificationCallback(
+              NotificationInteractionDetails().fromMap(call.arguments)
+          );
+        }
+        break;
 
       default:
         return Future.error('method not defined');
-    }
-  }
-
-  void _validateId(int id) {
-    if (id > 0x7FFFFFFF || id < -0x80000000) {
-      throw ArgumentError(
-          'id must fit within the size of a 32-bit integer i.e. in the range [-2^31, 2^31 - 1]');
     }
   }
 }

@@ -9,6 +9,8 @@ dependencies:
     sdk: flutter
   meta: ^1.1.6
   platform: ^2.2.0
+  ansicolor: ^1.0.2
+
   url_launcher: ^3.0.2
 
 dev_dependencies:

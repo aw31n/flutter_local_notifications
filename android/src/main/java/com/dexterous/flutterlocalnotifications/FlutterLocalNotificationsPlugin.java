@@ -80,6 +80,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String METHOD_CHANNEL = "dexterous.com/flutter/local_notifications";
     private static final String PAYLOAD = "payload";
     private static final String AUTO_CANCEL = "autoCancel";
+    private static final String BUTTON_KEY = "key";
     private static final String BUTTON_LABEL = "label";
     private static final String INVALID_ICON_ERROR_CODE = "INVALID_ICON";
     private static final String INVALID_LARGE_ICON_ERROR_CODE = "INVALID_LARGE_ICON";
@@ -91,7 +92,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_DRAWABLE_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a drawable resource to your Android head project.";
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
-    public static String ACTION_KEY = "action_id";
+    public static String ACTION_KEY = "action_key";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
     public static String REPEAT = "repeat";
@@ -173,17 +174,17 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
     @NonNull
     @SuppressWarnings("unchecked")
-    public static void createActionButtons(Map<String, Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
+    public static void createActionButtons(List<Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
 
-        for(Map.Entry<String, Object> entry : actionButtons.entrySet()) {
+        for(Object buttonObject : actionButtons) {
 
-            Object valueObject = entry.getValue();
-            if( valueObject instanceof Map<?,?> ) {
+            if( buttonObject instanceof Map<?,?> ) {
 
-                String buttonKey = entry.getKey();
-                Map<String, Object> buttonProperties = (Map<String, Object>) valueObject;
+                Map<String, Object> buttonProperties = (Map<String, Object>) buttonObject;
 
+                String buttonKey  = (String) buttonProperties.get(BUTTON_KEY);
                 String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
+
                 boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
 
                 System.out.println("buttonKey: " + buttonKey);
@@ -897,10 +898,10 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             int notification_id = intent.getIntExtra(NOTIFICATION_ID, -1);
 
-            returnObject.put("notification_id", notification_id);
-            returnObject.put("action_key", intent.getStringExtra(ACTION_KEY));
+            returnObject.put(NOTIFICATION_ID, notification_id);
+            returnObject.put(ACTION_KEY, intent.getStringExtra(ACTION_KEY));
 
-            //Serializable serializable = intent.getSerializableExtra(PAYLOAD);
+            @SuppressWarnings("unchecked")
             Map<String, String> payloadObject = intent.getSerializableExtra(PAYLOAD) != null ? (Map<String, String>) intent.getSerializableExtra(PAYLOAD) : null;
             returnObject.put("payload", payloadObject);
 
@@ -911,16 +912,6 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
             System.out.println("Notification received java: "+returnObject.toString());
 
             channel.invokeMethod("receiveNotification", returnObject);
-
-
-            // ****************** DEPRECATED AND UNSECURE *******************
-            //
-            // https://github.com/MaikuB/flutter_local_notifications/issues/378
-            //
-            // **************************************************************
-            //String payloadPlainText = payloadObject != null ? payloadObject.get("payload") : "";
-            //channel.invokeMethod("selectNotification", payloadPlainText != null ? payloadPlainText : "");
-            // ****************** DEPRECATED AND UNSECURE *******************
 
             return true;
         }
