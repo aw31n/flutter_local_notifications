@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum NotificationSource{ foreground, background }
 
 class ReceivedNotification {
@@ -52,9 +54,12 @@ class ReceivedNotification {
 
   @override
   String toString() {
-    return toMap().toString()
-        .replaceAll(',', ',\n')
-        .replaceAll('[\{\[]', '\$1\n')
-        .replaceAll('[\}\]]', '\n\$1');
+    JsonEncoder encoder = JsonEncoder.withIndent('  ');
+
+    Map json = toMap();
+    json['source'] = json['source'].toString();
+    String prettyPrint = encoder.convert(json);
+
+    return prettyPrint;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class NotificationActionButton {
   String key;
   String label;
@@ -26,5 +28,15 @@ class NotificationActionButton {
       'autoCancel': autoCancel,
       'requiresInput': requiresInput
     };
+  }
+
+  @override
+  String toString() {
+    JsonEncoder encoder = JsonEncoder.withIndent('  ');
+
+    Map json = toMap();
+    String prettyPrint = encoder.convert(json);
+
+    return prettyPrint;
   }
 }
