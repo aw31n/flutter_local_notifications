@@ -84,8 +84,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String RECEIVED_DATE = "received_date";
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     private static final String SOURCE_CHANNEL = "source";
+    private static final String BACKGROUND_SOURCE = "NotificationSource.background";
     private static final String FOREGROUND_SOURCE = "NotificationSource.foreground";
-    private static final String APPLICATION_SOURCE = "NotificationSource.application";
     private static final String PAYLOAD = "payload";
     private static final String AUTO_CANCEL = "autoCancel";
     private static final String BUTTON_KEY = "key";
@@ -934,7 +934,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 cancelNotification(new Integer(notification_id));
             }
 
-            returnObject.put(SOURCE_CHANNEL, onStatup ? FOREGROUND_SOURCE : APPLICATION_SOURCE);
+            returnObject.put(SOURCE_CHANNEL, onStatup ? BACKGROUND_SOURCE : FOREGROUND_SOURCE);
 
             returnObject.put(CREATED_DATE, intent.getStringExtra(CREATED_DATE));
             returnObject.put(RECEIVED_DATE, getUTCdate());

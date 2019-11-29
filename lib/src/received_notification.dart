@@ -1,4 +1,4 @@
-enum NotificationSource{ foreground, application }
+enum NotificationSource{ foreground, background }
 
 class ReceivedNotification {
 

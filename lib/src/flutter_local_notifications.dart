@@ -432,7 +432,7 @@ class FlutterLocalNotificationsPlugin {
         // keep the deprecated method working for a while
         if(call.arguments['payload'] != null && call.arguments['payload']['deprecated'] != null){
 
-          if(call.arguments['source'] == 'NotificationSource.foreground'){
+          if(call.arguments['source'] == 'NotificationSource.background'){
 
             return didReceiveLocalNotificationCallback(
                 call.arguments['id'],
