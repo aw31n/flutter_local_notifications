@@ -23,6 +23,8 @@ import androidx.core.app.AlarmManagerCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.Person;
 import androidx.core.graphics.drawable.IconCompat;
+import androidx.core.app.RemoteInput;
+import android.os.Bundle;
 
 import com.dexterous.flutterlocalnotifications.models.IconSource;
 import com.dexterous.flutterlocalnotifications.models.MessageDetails;
@@ -80,16 +82,18 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String SHOW_WEEKLY_AT_DAY_AND_TIME_METHOD = "showWeeklyAtDayAndTime";
     private static final String GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD = "getNotificationAppLaunchDetails";
     private static final String METHOD_CHANNEL = "dexterous.com/flutter/local_notifications";
+    private static final String BUTTON_KEY = "key";
+    private static final String BUTTON_LABEL = "label";
     private static final String CREATED_DATE = "created_date";
     private static final String RECEIVED_DATE = "received_date";
+    private static final String BUTTON_INPUT = "action_input";
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     private static final String SOURCE_CHANNEL = "source";
     private static final String BACKGROUND_SOURCE = "NotificationSource.background";
     private static final String FOREGROUND_SOURCE = "NotificationSource.foreground";
     private static final String PAYLOAD = "payload";
     private static final String AUTO_CANCEL = "autoCancel";
-    private static final String BUTTON_KEY = "key";
-    private static final String BUTTON_LABEL = "label";
+    private static final String REQUIRES_INPUT = "requiresInput";
     private static final String INVALID_ICON_ERROR_CODE = "INVALID_ICON";
     private static final String INVALID_LARGE_ICON_ERROR_CODE = "INVALID_LARGE_ICON";
     private static final String INVALID_BIG_PICTURE_ERROR_CODE = "INVALID_BIG_PICTURE";
@@ -202,14 +206,17 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
 
                 boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
+                boolean requiresInput = (boolean) buttonProperties.get(REQUIRES_INPUT);
 
                 System.out.println("buttonKey: " + buttonKey);
                 System.out.println("buttonName: " + buttonName);
+                System.out.println("requiresInput: " + (requiresInput ? "true" : "false"));
 
                 Intent actionIntent = new Intent(context, getMainActivityClass(context));
 
                 actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
                 actionIntent.putExtra(AUTO_CANCEL, autoCancel);
+                actionIntent.putExtra(REQUIRES_INPUT, requiresInput);
 
                 actionIntent.putExtra(CREATED_DATE, getUTCdate());
 
@@ -219,13 +226,31 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 setPayload(actionIntent, notificationDetails);
 
                 PendingIntent actionPendingIntent = PendingIntent.getActivity(
-                        context,
-                        notificationDetails.id,
-                        actionIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                    context,
+                    notificationDetails.id,
+                    actionIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT
                 );
 
-                builder.addAction(0, buttonName, actionPendingIntent);
+                if(requiresInput){
+
+                    RemoteInput remoteInput = new RemoteInput.Builder(buttonKey)
+                            .setLabel(buttonName)
+                            .build();
+
+                    NotificationCompat.Action replyAction = new NotificationCompat.Action.Builder(
+                            0, buttonName, actionPendingIntent)
+                            .addRemoteInput(remoteInput)
+                            .setAllowGeneratedReplies(true)
+                            .build();
+
+                    builder.addAction( replyAction );
+
+                } else {
+
+                    builder.addAction(0, buttonName, actionPendingIntent);
+
+                }
             }
         }
     }
@@ -910,6 +935,14 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         return sendNotificationPayloadMessage(intent, false);
     }
 
+    private String getInputText(Intent intent, String buttonKey) {
+        Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
+        if (remoteInput != null) {
+            return remoteInput.getCharSequence(buttonKey).toString();
+        }
+        return null;
+    }
+
     private Boolean sendNotificationPayloadMessage(Intent intent, boolean onStatup) {
 
         String action_name = intent.getAction();
@@ -932,6 +965,10 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){
                 cancelNotification(new Integer(notification_id));
+            }
+
+            if(intent.getBooleanExtra(REQUIRES_INPUT, false)){
+                returnObject.put(BUTTON_INPUT, getInputText(intent, intent.getStringExtra(ACTION_KEY)));
             }
 
             returnObject.put(SOURCE_CHANNEL, onStatup ? BACKGROUND_SOURCE : FOREGROUND_SOURCE);

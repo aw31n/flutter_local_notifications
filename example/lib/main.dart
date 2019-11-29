@@ -51,11 +51,13 @@ Future<void> main() async {
       // Deprecated Method
       onSelectNotification: (String payloadPainText) async {
         debugPrint('Notification received: '+(payloadPainText ?? 'null'));
+        // On this stage, BuildContext do not exist yet. Lets add an event to be captured later.
         selectNotificationSubject.add(payloadPainText);
 
       },
       // Replace to onSelectNotification
       onReceiveNotification: (ReceivedNotification returnDetails) async {
+        // On this stage, BuildContext do not exist yet. Lets add an event to be captured later.
         debugPrint('Notification received: id ' + returnDetails.notification_id.toString());
         receiveNotificationSubject.add(returnDetails);
       }
@@ -117,7 +119,7 @@ class _HomePageState extends State<HomePage> {
 
     receiveNotificationSubject.stream.listen(
         (ReceivedNotification receivedNotification){
-          if(receivedNotification.source == NotificationSource.foreground){
+          if(receivedNotification.source == NotificationSource.background){
             _showAlertDidReceiveNotification(receivedNotification.toString());
           } else {
             Navigator.push( context, MaterialPageRoute( builder: (context) =>
@@ -317,6 +319,10 @@ class _HomePageState extends State<HomePage> {
                   renderSimpleButton(
                     'Show plain notification with payload and action buttons',
                     onPressed: _showNotificationWithButtons
+                  ),
+                  renderSimpleButton(
+                      'Show plain notification with payload, reply and action button',
+                      onPressed: _showNotificationWithButtonsAndReply
                   ),
                   renderSimpleButton(
                     'Show plain notification that has no body with payload',
@@ -598,6 +604,43 @@ class _HomePageState extends State<HomePage> {
                   key: 'REMEMBER',
                   label: 'Remember-me later',
                   autoCancel: false
+              )
+            ],
+            payload: {
+              'uuid' : 'uuid-test'
+            }
+        )
+    );
+  }
+
+  Future<void> _showNotificationWithButtonsAndReply() async {
+
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'your channel id', 'your channel name', 'your channel description',
+        importance: Importance.Max, priority: Priority.High, ticker: 'ticker',
+        color: Colors.blueAccent
+    );
+    var iOSPlatformChannelSpecifics = IOSNotificationDetails();
+    var platformChannelSpecifics = NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+
+    await flutterLocalNotificationsPlugin.showNotification(
+        platformChannelSpecifics,
+        NotificationContent(
+            id: 0,
+            title: 'plain title',
+            body: 'plain body',
+            actionButtons: [
+              NotificationActionButton(
+                  key: 'REPLY',
+                  label: 'Reply',
+                  autoCancel: true,
+                  requiresInput: true,
+              ),
+              NotificationActionButton(
+                  key: 'ARCHIVE',
+                  label: 'Archive',
+                  autoCancel: true
               )
             ],
             payload: {

@@ -2,14 +2,18 @@ class NotificationActionButton {
   String key;
   String label;
   bool autoCancel;
+  bool requiresInput;
 
-  NotificationActionButton({this.key, this.label, this.autoCancel});
+  NotificationActionButton({this.key, this.label, this.autoCancel, this.requiresInput}){
+    requiresInput = requiresInput ?? false;
+  }
 
   NotificationActionButton fromMap(Map<String, dynamic> data) {
 
     key = data['key'];
     label = data['key'];
     autoCancel = data['autoCancel'];
+    requiresInput = data['requiresInput'];
 
     return this;
   }
@@ -19,7 +23,8 @@ class NotificationActionButton {
     return {
       'key': key,
       'label': label,
-      'autoCancel': autoCancel
+      'autoCancel': autoCancel,
+      'requiresInput': requiresInput
     };
   }
 }
