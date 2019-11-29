@@ -10,7 +10,7 @@ export 'src/platform_specifics/android/enums.dart';
 export 'src/platform_specifics/android/initialization_settings.dart';
 export 'src/platform_specifics/android/notification_details.dart';
 export 'src/notification_action_button.dart';
-export 'src/notification_interaction_details.dart';
+export 'src/received_notification.dart';
 export 'src/notification_content.dart';
 export 'src/platform_specifics/android/message.dart';
 export 'src/platform_specifics/android/person.dart';

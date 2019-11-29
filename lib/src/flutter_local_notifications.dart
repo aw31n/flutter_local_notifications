@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_local_notifications/src/notification_content.dart';
+import 'package:flutter_local_notifications/src/received_notification.dart';
 import 'package:meta/meta.dart';
 import 'package:platform/platform.dart';
 import 'initialization_settings.dart';
@@ -22,7 +23,7 @@ import 'package:ansicolor/ansicolor.dart';
 
 // TODO DEPRECATED
 typedef SelectNotificationCallback = Future<dynamic> Function(String payload);
-typedef ReceiveNotificationCallback = Future<dynamic> Function(NotificationInteractionDetails returnDetails);
+typedef ReceiveNotificationCallback = Future<dynamic> Function(ReceivedNotification returnDetails);
 
 // Signature of the callback that is triggered when a notification is shown whilst the app is in the foreground. Applicable to iOS versions < 10 only
 typedef DidReceiveLocalNotificationCallback = Future<dynamic> Function(
@@ -432,15 +433,14 @@ class FlutterLocalNotificationsPlugin {
         if(call.arguments['payload'] != null && call.arguments['payload']['deprecated'] != null){
 
           return selectNotificationCallback(
-              //(call.arguments['action_key'] != null ? call.arguments['action_key']+'::' : '') +
+              // Not safe
               call.arguments['payload']['plainText'] ?? ''
           );
 
         } else {
 
-          //call.arguments['isReceivedForeground'] = false;
           return receiveNotificationCallback(
-              NotificationInteractionDetails().fromMap(arguments)
+              ReceivedNotification().fromMap(arguments)
           );
         }
         break;
@@ -459,9 +459,8 @@ class FlutterLocalNotificationsPlugin {
 
         } else {
 
-          //call.arguments['isReceivedForeground'] = true;
           return receiveNotificationCallback(
-              NotificationInteractionDetails().fromMap(call.arguments)
+              ReceivedNotification().fromMap(call.arguments)
           );
         }
         break;

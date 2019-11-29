@@ -235,11 +235,6 @@ public class NotificationDetails {
     @SuppressWarnings("unchecked")
     private static void readButtons(NotificationDetails notificationDetails, Object argumentValue) {
 
-        // Using the constant ACTION_BUTTONS makes the app crashes in some platforms for a unknown reason.
-        // Seems like a recent Grove issue.
-        // Because of that i do not used the standard here.
-
-        System.out.println("action buttons add");
         if (argumentValue != null && argumentValue instanceof List<?>) {
             notificationDetails.actionButtons = (List<Object>) argumentValue;
         }

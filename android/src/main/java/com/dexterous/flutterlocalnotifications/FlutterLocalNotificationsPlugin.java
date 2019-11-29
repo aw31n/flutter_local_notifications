@@ -48,6 +48,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 import java.io.Serializable;
 
 import io.flutter.plugin.common.MethodCall;
@@ -78,6 +80,12 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String SHOW_WEEKLY_AT_DAY_AND_TIME_METHOD = "showWeeklyAtDayAndTime";
     private static final String GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD = "getNotificationAppLaunchDetails";
     private static final String METHOD_CHANNEL = "dexterous.com/flutter/local_notifications";
+    private static final String CREATED_DATE = "created_date";
+    private static final String RECEIVED_DATE = "received_date";
+    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String SOURCE_CHANNEL = "source";
+    private static final String FOREGROUND_SOURCE = "NotificationSource.foreground";
+    private static final String APPLICATION_SOURCE = "NotificationSource.application";
     private static final String PAYLOAD = "payload";
     private static final String AUTO_CANCEL = "autoCancel";
     private static final String BUTTON_KEY = "key";
@@ -98,6 +106,12 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     public static String REPEAT = "repeat";
     private final Registrar registrar;
     private MethodChannel channel;
+
+    private static String getUTCdate(){
+        Date date = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
+        return formatter.format(date);
+    }
 
     private FlutterLocalNotificationsPlugin(Registrar registrar) {
         this.registrar = registrar;
@@ -122,6 +136,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         Intent intent = new Intent(context, getMainActivityClass(context));
         intent.setAction(SELECT_NOTIFICATION);
         intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+
+        intent.putExtra(CREATED_DATE, getUTCdate());
 
         setPayload(intent, notificationDetails);
 
@@ -194,6 +210,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
                 actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
                 actionIntent.putExtra(AUTO_CANCEL, autoCancel);
+
+                actionIntent.putExtra(CREATED_DATE, getUTCdate());
 
                 actionIntent.putExtra(NOTIFICATION_ID, notificationDetails.id);
                 actionIntent.putExtra(ACTION_KEY, buttonKey);
@@ -773,18 +791,21 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
     private void initialize(MethodCall call, Result result) {
         Map<String, Object> arguments = call.arguments();
+
         String defaultIcon = (String) arguments.get(DEFAULT_ICON);
         if (!isValidDrawableResource(registrar.context(), defaultIcon, result, INVALID_ICON_ERROR_CODE)) {
             return;
         }
+
         SharedPreferences sharedPreferences = registrar.context().getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(DEFAULT_ICON, defaultIcon);
         editor.commit();
 
         if (registrar.activity() != null) {
-            sendNotificationPayloadMessage(registrar.activity().getIntent());
+            sendNotificationPayloadMessage(registrar.activity().getIntent(), true);
         }
+
         result.success(true);
     }
 
@@ -886,6 +907,10 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     }
 
     private Boolean sendNotificationPayloadMessage(Intent intent) {
+        return sendNotificationPayloadMessage(intent, false);
+    }
+
+    private Boolean sendNotificationPayloadMessage(Intent intent, boolean onStatup) {
 
         String action_name = intent.getAction();
 
@@ -903,15 +928,21 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             @SuppressWarnings("unchecked")
             Map<String, String> payloadObject = intent.getSerializableExtra(PAYLOAD) != null ? (Map<String, String>) intent.getSerializableExtra(PAYLOAD) : null;
-            returnObject.put("payload", payloadObject);
+            returnObject.put(PAYLOAD, payloadObject);
 
             if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){
                 cancelNotification(new Integer(notification_id));
             }
 
+            returnObject.put(SOURCE_CHANNEL, onStatup ? FOREGROUND_SOURCE : APPLICATION_SOURCE);
+
+            returnObject.put(CREATED_DATE, intent.getStringExtra(CREATED_DATE));
+            returnObject.put(RECEIVED_DATE, getUTCdate());
+
+
             System.out.println("Notification received java: "+returnObject.toString());
 
-            channel.invokeMethod("receiveNotification", returnObject);
+            channel.invokeMethod(onStatup ? "didReceiveLocalNotification" : "receiveNotification", returnObject);
 
             return true;
         }

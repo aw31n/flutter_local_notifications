@@ -15,7 +15,10 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 // Streams are created so that app can respond to notification-related events since the plugin is initialised in the `main` function
-final BehaviorSubject<Map<String, dynamic>> didReceiveNotification = BehaviorSubject<Map<String, dynamic>>();
+final BehaviorSubject<ReceivedNotification> didReceiveNotificationSubject = BehaviorSubject<ReceivedNotification>();
+final BehaviorSubject<String> selectNotificationSubject = BehaviorSubject<String>();
+final BehaviorSubject<ReceivedNotification> receiveNotificationSubject = BehaviorSubject<ReceivedNotification>();
+
 
 // Pause and Play vibration sequences
 final Int64List lowVibrationPattern    = Int64List.fromList([ 0, 200, 200, 200 ]);
@@ -34,6 +37,24 @@ Future<void> main() async {
   // needed if you intend to initialize in the `main` function
   WidgetsFlutterBinding.ensureInitialized();
 
+  InitializationSettings initializationSettings = InitializationSettings( AndroidInitializationSettings('app_icon'), IOSInitializationSettings() );
+
+  await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      // Deprecated Method
+      onSelectNotification: (String payloadPainText) async {
+        debugPrint('Notification received: '+(payloadPainText ?? 'null'));
+        selectNotificationSubject.add(payloadPainText);
+
+      },
+      // Replace to onSelectNotification
+      onReceiveNotification: (ReceivedNotification returnDetails) async {
+        debugPrint('Notification received: id ' + returnDetails.notification_id.toString());
+        receiveNotificationSubject.add(returnDetails);
+      }
+  );
+
+
   runApp(MaterialApp( home: HomePage() ));
 }
 
@@ -47,8 +68,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
-  InitializationSettings initializationSettings;
-
   final MethodChannel platform =
       MethodChannel('crossingthestreams.io/resourceResolver');
 
@@ -58,51 +77,54 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    // NOTE: if you want to find out if the app was launched via notification then you could use the following call and then do something like
-    // change the default route of the app
-    // var notificationAppLaunchDetails =
-    //     await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    selectNotificationSubject.stream.listen(
+            (String payloadPainText){
+          Navigator.push( context, MaterialPageRoute( builder: (context) =>
+              SecondScreen(payloadPainText)
+          ));
+        }
+    );
 
-    initializationSettings = InitializationSettings( AndroidInitializationSettings('app_icon'), IOSInitializationSettings() );
+    receiveNotificationSubject.stream.listen(
+            (ReceivedNotification receivedNotification){
+          Navigator.push( context, MaterialPageRoute( builder: (context) =>
+              SecondScreen(receivedNotification.toString())
+          ));
+        }
+    );
+
+    didReceiveNotificationSubject.stream.listen(
+      (receivedNotification) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) =>
+            CupertinoAlertDialog(
+              title: Text('didReceivedNotification'),
+              content: Text('notification received when the app was closed'),
+              actions: [
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  child: Text('Ok'),
+                  onPressed: () async {
+                    Navigator.of(context, rootNavigator: true).pop();
+                  },
+                )
+              ],
+            )
+        );
+      });
   }
 
   @override
   void dispose() {
+    didReceiveNotificationSubject.close();
+    receiveNotificationSubject.close();
+    selectNotificationSubject.close();
     super.dispose();
   }
 
-  void listenNotifications(BuildContext context) async {
-
-    await flutterLocalNotificationsPlugin.initialize(
-        initializationSettings,
-        // Deprecated Method
-        onSelectNotification: (String payloadPainText) async {
-
-          debugPrint('Notification received: '+(payloadPainText ?? 'null'));
-
-          await Navigator.push( context, MaterialPageRoute( builder: (context) =>
-              SecondScreen(payloadPainText)
-          ));
-
-        },
-        // Replace to onSelectNotification
-        onReceiveNotification: (NotificationInteractionDetails returnDetails) async {
-
-          debugPrint('Notification id received: ' + returnDetails.notification_id.toString());
-
-          await Navigator.push(context, MaterialPageRoute(builder: (context) =>
-              SecondScreen(returnDetails.toString())
-          ));
-        }
-    );
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
-
-    listenNotifications(context);
 
     MediaQueryData mediaQuery = MediaQuery.of(context);
 
@@ -255,10 +277,6 @@ class _HomePageState extends State<HomePage> {
                       'Show plain notification with plaintext payload (unsecure)',
                       onPressed: _showDeprecatedNotification
                   ),
-
-                  /* ******************************************************************** */
-                  renderDivisor( title: 'Notifications using Object payload' ),
-                  renderNote('Topic discussed on GitHub bellow:'),
                   renderSimpleButton(
                       'Show plain notification with payload object',
                       onPressed: _showNotificationWithPayloadObject

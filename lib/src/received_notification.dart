@@ -1,30 +1,34 @@
 enum NotificationSource{ foreground, application }
 
-class NotificationInteractionDetails {
+class ReceivedNotification {
 
   int notification_id = -1;
   NotificationSource source;
   String buttonKeyPressed = '';
-  String buttonReplyInput = '';
+  String buttonKeyInput = '';
   Map<String, String> payload;
+  String receivedDate;
+  String createdDate;
 
-  NotificationInteractionDetails({
+  ReceivedNotification({
     this.notification_id,
     this.source,
     this.buttonKeyPressed,
-    this.buttonReplyInput
+    this.buttonKeyInput
   });
 
-  NotificationInteractionDetails fromMap(Map<String, dynamic> receivedContent) {
+  ReceivedNotification fromMap(Map<String, dynamic> receivedContent) {
 
     source =
         receivedContent['source'] != null ?
           NotificationSource.values.firstWhere((e) => e.toString() == receivedContent['source']) :
           null;
 
-    notification_id = receivedContent['notification_id'];
+    notification_id  = receivedContent['notification_id'];
     buttonKeyPressed = receivedContent['action_key'];
-    buttonReplyInput = receivedContent['action_input'];
+    buttonKeyInput   = receivedContent['action_input'];
+    createdDate      = receivedContent['created_date'];
+    receivedDate     = receivedContent['received_date'];
 
     payload = Map<String, String>.from(receivedContent['payload']);
 
@@ -34,11 +38,13 @@ class NotificationInteractionDetails {
   Map<String, dynamic> toMap() {
 
     return {
-      'notification_id': notification_id,
       'source': source,
-      'payload': payload,
+      'notification_id': notification_id,
+      'createdDate': createdDate,
+      'receivedDate': receivedDate,
       'buttonKeyPressed': buttonKeyPressed,
-      'buttonReplyInput': buttonReplyInput,
+      'buttonKeyInput': buttonKeyInput,
+      'payload': payload,
     };
 
   }
