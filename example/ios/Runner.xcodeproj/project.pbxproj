@@ -442,7 +442,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Flutter",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.dexterous.flutterLocalNotificationsExample;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.cardaphio.flutterLocalNotificationsExample;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -463,7 +463,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Flutter",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.dexterous.flutterLocalNotificationsExample;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.cardaphio.flutterLocalNotificationsExample;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

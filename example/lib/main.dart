@@ -256,17 +256,23 @@ class _HomePageState extends State<HomePage> {
 
     Widget renderCheckButton(String label, bool isSelected, {Color labelColor, Color backgroundColor, void Function(bool) onPressed}){
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text(label, style: TextStyle(fontSize: 16)),
-            Switch(
-              value: isSelected,
-              onChanged: onPressed,
-            ),
-          ]
-        )
+          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Container(
+                    width: mediaQuery.size.width - 110 /* 30 - 60 - 20 */,
+                    child: Text(label, style: TextStyle(fontSize: 16))
+                ),
+                Container(
+                    width: 60,
+                    child: Switch(
+                      value: isSelected,
+                      onChanged: onPressed,
+                    )
+                ),
+              ]
+          )
       );
     }
 

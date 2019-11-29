@@ -295,8 +295,13 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if([INITIALIZE_METHOD isEqualToString:call.method]) {
         [self initialize:call result:result];
-    } else if ([SHOW_METHOD isEqualToString:call.method] || [SCHEDULE_METHOD isEqualToString:call.method] || [PERIODICALLY_SHOW_METHOD isEqualToString:call.method] || [SHOW_DAILY_AT_TIME_METHOD isEqualToString:call.method]
-               || [SHOW_WEEKLY_AT_DAY_AND_TIME_METHOD isEqualToString:call.method]) {
+    } else if (
+        [SHOW_METHOD isEqualToString:call.method] ||
+        [SCHEDULE_METHOD isEqualToString:call.method] ||
+        [PERIODICALLY_SHOW_METHOD isEqualToString:call.method] ||
+        [SHOW_DAILY_AT_TIME_METHOD isEqualToString:call.method] ||
+        [SHOW_WEEKLY_AT_DAY_AND_TIME_METHOD isEqualToString:call.method]
+    ) {
         [self showNotification:call result:result];
     } else if([CANCEL_METHOD isEqualToString:call.method]) {
         [self cancelNotification:call result:result];
@@ -385,9 +390,38 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
                                                                     NSCalendarUnitSecond) fromDate:date];
         trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:dateComponents repeats:false];
     }
+
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+
+    // https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SupportingNotificationsinYourApp.html
+
+    UNNotificationAction *acceptAction = [UNNotificationAction
+        actionWithIdentifier: @"ACCEPT_ACTION"
+        title: @"Accept"
+        options: UNNotificationActionOptionNone
+    ];
+
+    UNNotificationAction *declineAction = [UNNotificationAction
+        actionWithIdentifier: @"DECLINE_ACTION"
+        title: @"Decline"
+        options: UNNotificationActionOptionForeground
+    ];
+
+    // Define the notification type
+    UNNotificationCategory *meetingInviteCategory = [UNNotificationCategory
+          categoryWithIdentifier: @"MEETING_INVITATION"
+          actions: @[acceptAction, declineAction]
+          intentIdentifiers: @[]
+          options: UNNotificationCategoryOptionNone
+    ];
+
+    content.categoryIdentifier = @"MEETING_INVITATION";
+
     UNNotificationRequest* notificationRequest = [UNNotificationRequest
                                                   requestWithIdentifier:[notificationDetails.id stringValue] content:content trigger:trigger];
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+
+    [center setNotificationCategories:[NSSet setWithObjects: meetingInviteCategory, nil]];
+
     [center addNotificationRequest:notificationRequest withCompletionHandler:^(NSError * _Nullable error) {
         if (error != nil) {
             NSLog(@"Unable to Add Notification Request");
