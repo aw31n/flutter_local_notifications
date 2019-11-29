@@ -181,15 +181,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
     @SuppressWarnings("unchecked")
     public static void setPayload(Intent intent, NotificationDetails notificationDetails) {
-        if (notificationDetails.payload != null) {
-
-            HashMap<String, String> hashMapCopy =
-                    (notificationDetails.payload instanceof HashMap)
-                            ? (HashMap) notificationDetails.payload
-                            : null;
-
-            intent.putExtra(PAYLOAD, hashMapCopy);
-        }
+        intent.putExtra(PAYLOAD, notificationDetails.payload);
     }
 
     @NonNull
@@ -960,7 +952,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
             returnObject.put(ACTION_KEY, intent.getStringExtra(ACTION_KEY));
 
             @SuppressWarnings("unchecked")
-            Map<String, String> payloadObject = intent.getSerializableExtra(PAYLOAD) != null ? (Map<String, String>) intent.getSerializableExtra(PAYLOAD) : null;
+            Serializable serializablePayload = intent.getSerializableExtra(PAYLOAD);
+            HashMap<String, String> payloadObject = serializablePayload != null ? (HashMap<String, String>) serializablePayload : null;
             returnObject.put(PAYLOAD, payloadObject);
 
             if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){

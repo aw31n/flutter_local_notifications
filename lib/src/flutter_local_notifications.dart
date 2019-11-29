@@ -208,21 +208,21 @@ class FlutterLocalNotificationsPlugin {
     return showNotificationSchedule(
         scheduledDate,
         notificationDetails,
-        androidAllowWhileIdle: androidAllowWhileIdle,
-        notificationContent: NotificationContent(
+        NotificationContent(
           id: id,
           title: title,
           body: body,
           payload: _getDeprecatedPayload(payload)
-        )
+        ),
+        androidAllowWhileIdle: androidAllowWhileIdle,
     );
   }
 
   Future<void> showNotificationSchedule(
       DateTime scheduledDate,
       NotificationDetails notificationDetails,
+      NotificationContent notificationContent,
       {
-        NotificationContent notificationContent,
         bool androidAllowWhileIdle = false
       }) async {
 

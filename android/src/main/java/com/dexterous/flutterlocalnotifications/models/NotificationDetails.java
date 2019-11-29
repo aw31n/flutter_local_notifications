@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 public class NotificationDetails {
     private static final String PAYLOAD = "payload";
@@ -123,7 +124,7 @@ public class NotificationDetails {
     public Time repeatTime;
     public Long millisecondsSinceEpoch;
     public Long calledAt;
-    public Map<String, String> payload;
+    public HashMap<String, String> payload;
     public String groupKey;
     public Boolean setAsGroupSummary;
     public Integer groupAlertBehavior;
@@ -171,7 +172,7 @@ public class NotificationDetails {
         }
         if (arguments.containsKey(PAYLOAD) && arguments.get(PAYLOAD) instanceof Map<?,?>) {
             @SuppressWarnings("unchecked")
-            Map<String, String> payloadInstance = (Map<String, String>) arguments.get(PAYLOAD);
+            HashMap<String, String> payloadInstance = (HashMap<String, String>) arguments.get(PAYLOAD);
             notificationDetails.payload = payloadInstance;
         }
         if (arguments.containsKey(REPEAT_TIME)) {

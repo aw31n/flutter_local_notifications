@@ -33,7 +33,7 @@ class ReceivedNotification {
     createdDate      = receivedContent['created_date'];
     receivedDate     = receivedContent['received_date'];
 
-    payload = Map<String, String>.from(receivedContent['payload']);
+    payload = receivedContent['payload'] != null ? Map<String, String>.from(receivedContent['payload']) : null;
 
     return this;
   }
