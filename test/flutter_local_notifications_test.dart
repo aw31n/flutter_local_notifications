@@ -5,6 +5,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() {
+
+  Map<String, dynamic> _retrievePlatformSpecificNotificationDetails(
+      NotificationDetails notificationDetails, bool isAndroid) {
+
+    Map<String, dynamic> serializedPlatformSpecifics;
+
+    if (isAndroid) {
+      serializedPlatformSpecifics = notificationDetails?.android?.toMap();
+    } else {
+      serializedPlatformSpecifics = notificationDetails?.iOS?.toMap();
+    }
+
+    return serializedPlatformSpecifics;
+  }
+
   MockMethodChannel mockChannel;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   const id = 0;
@@ -84,6 +99,7 @@ void main() {
       verify(mockChannel.invokeMethod(
           'initialize', initializationSettingsAndroid.toMap()));
     });
+
     test('show notification on Android', () async {
       AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails('your channel id', 'your channel name',
@@ -93,16 +109,84 @@ void main() {
       NotificationDetails platformChannelSpecifics =
           NotificationDetails(androidPlatformChannelSpecifics, null);
 
-      await flutterLocalNotificationsPlugin
-          .show(0, title, body, platformChannelSpecifics, payload: payload);
-      verify(mockChannel.invokeMethod('show', <String, dynamic>{
-        'id': id,
-        'title': title,
-        'body': body,
-        'platformSpecifics': androidPlatformChannelSpecifics.toMap(),
-        'payload': payload
-      }));
+      NotificationContent notificationContent = NotificationContent(
+          id: 0,
+          title: 'title',
+          body: 'body',
+          payload: {
+            'key1':'value1',
+            'key2':'value2'
+          }
+      );
+
+      await flutterLocalNotificationsPlugin.showNotification(
+          platformChannelSpecifics,
+          notificationContent
+      );
+
+      var serializedPlatformSpecifics = _retrievePlatformSpecificNotificationDetails(platformChannelSpecifics, true);
+      var test = notificationContent.toMap()..addAll({
+        'platformSpecifics': serializedPlatformSpecifics
+      });
+
+      verify(mockChannel.invokeMethod('show',
+          {
+            'id': '0',
+            'title': 'title',
+            'body': 'body',
+            'actionButtons': [],
+            'payload': {
+              'key1': 'value1',
+              'key2': 'value2'
+            },
+            'platformSpecifics': {
+              'icon': null,
+              'channelId': 'your channel id',
+              'channelName': 'your channel name',
+              'channelDescription': 'your channel description',
+              'channelShowBadge': 'true',
+              'channelAction': '0',
+              'importance': '5',
+              'priority': '1',
+              'playSound': 'true',
+              'sound': null,
+              'enableVibration': 'true',
+              'vibrationPattern': null,
+              'style': '0',
+              'styleInformation': {
+                'htmlFormatContent': 'false',
+                'htmlFormatTitle': 'false'
+              },
+              'groupKey': null,
+              'setAsGroupSummary': null,
+              'groupAlertBehavior': '0',
+              'autoCancel': 'true',
+              'ongoing': null,
+              'colorAlpha': null,
+              'colorRed': null,
+              'colorGreen': null,
+              'colorBlue': null,
+              'largeIcon': null,
+              'largeIconBitmapSource': null,
+              'onlyAlertOnce': null,
+              'showProgress': 'false',
+              'maxProgress': '0',
+              'progress': '0',
+              'indeterminate': 'false',
+              'enableLights': 'false',
+              'ledColorAlpha': null,
+              'ledColorRed': null,
+              'ledColorGreen': null,
+              'ledColorBlue': null,
+              'ledOnMs': null,
+              'ledOffMs': null,
+              'ticker': null
+            }
+          }
+      ));
+
     });
+
     test('schedule notification on Android', () async {
       var scheduledNotificationDateTime =
           DateTime.now().add(Duration(seconds: 5));
@@ -134,6 +218,7 @@ void main() {
       verify(mockChannel.invokeMethod('cancel', id));
     });
   });
+  
 }
 
 class MockMethodChannel extends Mock implements MethodChannel {}

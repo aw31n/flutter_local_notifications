@@ -23,6 +23,8 @@ import androidx.core.app.AlarmManagerCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.Person;
 import androidx.core.graphics.drawable.IconCompat;
+import androidx.core.app.RemoteInput;
+import android.os.Bundle;
 
 import com.dexterous.flutterlocalnotifications.models.IconSource;
 import com.dexterous.flutterlocalnotifications.models.MessageDetails;
@@ -48,6 +50,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.io.Serializable;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -77,9 +82,18 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String SHOW_WEEKLY_AT_DAY_AND_TIME_METHOD = "showWeeklyAtDayAndTime";
     private static final String GET_NOTIFICATION_APP_LAUNCH_DETAILS_METHOD = "getNotificationAppLaunchDetails";
     private static final String METHOD_CHANNEL = "dexterous.com/flutter/local_notifications";
+    private static final String BUTTON_KEY = "key";
+    private static final String BUTTON_LABEL = "label";
+    private static final String CREATED_DATE = "created_date";
+    private static final String RECEIVED_DATE = "received_date";
+    private static final String BUTTON_INPUT = "action_input";
+    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final String SOURCE_CHANNEL = "source";
+    private static final String BACKGROUND_SOURCE = "NotificationSource.background";
+    private static final String FOREGROUND_SOURCE = "NotificationSource.foreground";
     private static final String PAYLOAD = "payload";
     private static final String AUTO_CANCEL = "autoCancel";
-    private static final String BUTTON_LABEL = "label";
+    private static final String REQUIRES_INPUT = "requiresInput";
     private static final String INVALID_ICON_ERROR_CODE = "INVALID_ICON";
     private static final String INVALID_LARGE_ICON_ERROR_CODE = "INVALID_LARGE_ICON";
     private static final String INVALID_BIG_PICTURE_ERROR_CODE = "INVALID_BIG_PICTURE";
@@ -90,12 +104,19 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_DRAWABLE_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a drawable resource to your Android head project.";
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
-    public static String ACTION_KEY = "action_id";
+    public static String NOTIFICATION_TITLE = "title";
+    public static String ACTION_KEY = "action_key";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
     public static String REPEAT = "repeat";
     private final Registrar registrar;
     private MethodChannel channel;
+
+    private static String getUTCdate(){
+        Date date = new Date();
+        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
+        return formatter.format(date);
+    }
 
     private FlutterLocalNotificationsPlugin(Registrar registrar) {
         this.registrar = registrar;
@@ -119,8 +140,14 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         setupNotificationChannel(context, notificationDetails);
         Intent intent = new Intent(context, getMainActivityClass(context));
         intent.setAction(SELECT_NOTIFICATION);
-        intent.putExtra(PAYLOAD, notificationDetails.payload);
+
         intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+        intent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
+
+        intent.putExtra(CREATED_DATE, getUTCdate());
+
+        setPayload(intent, notificationDetails);
+
         PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationDetails.id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         DefaultStyleInformation defaultStyleInformation = (DefaultStyleInformation) notificationDetails.styleInformation;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationDetails.channelId)
@@ -155,37 +182,73 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         return builder.build();
     }
 
+    @SuppressWarnings("unchecked")
+    public static void setPayload(Intent intent, NotificationDetails notificationDetails) {
+        intent.putExtra(PAYLOAD, notificationDetails.payload);
+    }
+
     @NonNull
-    public static void createActionButtons(Map<String, Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
+    @SuppressWarnings("unchecked")
+    public static void createActionButtons(List<Object> actionButtons, NotificationCompat.Builder builder, Context context, NotificationDetails notificationDetails) {
 
-        for(Map.Entry<String, Object> entry : actionButtons.entrySet()) {
+        for(Object buttonObject : actionButtons) {
 
-            String buttonKey = entry.getKey();
-            Map<String, Object> buttonProperties = (Map<String, Object>) entry.getValue();
+            if( buttonObject instanceof Map<?,?> ) {
 
-            String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
-            boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
+                Map<String, Object> buttonProperties = (Map<String, Object>) buttonObject;
 
-            System.out.println("buttonKey: " + buttonKey);
-            System.out.println("buttonName: " + buttonName);
+                String buttonKey  = (String) buttonProperties.get(BUTTON_KEY);
+                String buttonName = (String) buttonProperties.get(BUTTON_LABEL);
 
-            Intent actionIntent = new Intent(context, getMainActivityClass(context));
+                boolean autoCancel = (boolean) buttonProperties.get(AUTO_CANCEL);
+                boolean requiresInput = (boolean) buttonProperties.get(REQUIRES_INPUT);
 
-            actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
-            actionIntent.putExtra(AUTO_CANCEL, autoCancel);
-            actionIntent.putExtra(PAYLOAD, notificationDetails.payload);
-            actionIntent.putExtra(NOTIFICATION_ID,  notificationDetails.id);
-            actionIntent.putExtra(ACTION_KEY, buttonKey);
+                System.out.println("buttonKey: " + buttonKey);
+                System.out.println("buttonName: " + buttonName);
+                System.out.println("requiresInput: " + (requiresInput ? "true" : "false"));
 
-            PendingIntent actionPendingIntent = PendingIntent.getActivity(
-                context,
-                notificationDetails.id,
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
-            );
+                Intent actionIntent = new Intent(context, getMainActivityClass(context));
 
-            builder.addAction(0, buttonName, actionPendingIntent);
+                actionIntent.setAction(ACTION_NOTIFICATION + "_" + buttonKey);
+                actionIntent.putExtra(AUTO_CANCEL, autoCancel);
+                actionIntent.putExtra(REQUIRES_INPUT, requiresInput);
 
+                actionIntent.putExtra(CREATED_DATE, getUTCdate());
+
+                actionIntent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+                actionIntent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
+
+                actionIntent.putExtra(ACTION_KEY, buttonKey);
+
+                setPayload(actionIntent, notificationDetails);
+
+                PendingIntent actionPendingIntent = PendingIntent.getActivity(
+                    context,
+                    notificationDetails.id,
+                    actionIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                );
+
+                if(requiresInput){
+
+                    RemoteInput remoteInput = new RemoteInput.Builder(buttonKey)
+                            .setLabel(buttonName)
+                            .build();
+
+                    NotificationCompat.Action replyAction = new NotificationCompat.Action.Builder(
+                            0, buttonName, actionPendingIntent)
+                            .addRemoteInput(remoteInput)
+                            .setAllowGeneratedReplies(true)
+                            .build();
+
+                    builder.addAction( replyAction );
+
+                } else {
+
+                    builder.addAction(0, buttonName, actionPendingIntent);
+
+                }
+            }
         }
     }
 
@@ -750,18 +813,21 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
     private void initialize(MethodCall call, Result result) {
         Map<String, Object> arguments = call.arguments();
+
         String defaultIcon = (String) arguments.get(DEFAULT_ICON);
         if (!isValidDrawableResource(registrar.context(), defaultIcon, result, INVALID_ICON_ERROR_CODE)) {
             return;
         }
+
         SharedPreferences sharedPreferences = registrar.context().getSharedPreferences(SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(DEFAULT_ICON, defaultIcon);
         editor.commit();
 
         if (registrar.activity() != null) {
-            sendNotificationPayloadMessage(registrar.activity().getIntent());
+            sendNotificationPayloadMessage(registrar.activity().getIntent(), true);
         }
+
         result.success(true);
     }
 
@@ -863,35 +929,55 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     }
 
     private Boolean sendNotificationPayloadMessage(Intent intent) {
+        return sendNotificationPayloadMessage(intent, false);
+    }
+
+    private String getInputText(Intent intent, String buttonKey) {
+        Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
+        if (remoteInput != null) {
+            return remoteInput.getCharSequence(buttonKey).toString();
+        }
+        return null;
+    }
+
+    private Boolean sendNotificationPayloadMessage(Intent intent, boolean onStatup) {
 
         String action_name = intent.getAction();
 
         if (
-                SELECT_NOTIFICATION.equals(action_name) ||
-                action_name.startsWith(ACTION_NOTIFICATION)
-        ) {
-
-            // ****************** DEPRECATED AND UNSECURE *******************
-            //
-            // https://github.com/MaikuB/flutter_local_notifications/issues/378
-            //
-            // **************************************************************
-            String payload = intent.getStringExtra(PAYLOAD);
-            channel.invokeMethod("selectNotification", payload);
-            // ****************** DEPRECATED AND UNSECURE *******************
-
+            SELECT_NOTIFICATION.equals(action_name) ||
+            action_name.startsWith(ACTION_NOTIFICATION)
+        ){
 
             Map<String, Object> returnObject = new HashMap<>();
 
             int notification_id = intent.getIntExtra(NOTIFICATION_ID, -1);
 
-            returnObject.put("notification_id", notification_id);
-            returnObject.put("action_key", intent.getStringExtra(ACTION_KEY));
-            returnObject.put("payload", intent.getStringExtra(PAYLOAD));
+            returnObject.put(NOTIFICATION_ID,    notification_id);
+            returnObject.put(NOTIFICATION_TITLE, intent.getStringExtra(NOTIFICATION_TITLE));
+
+            returnObject.put(ACTION_KEY, intent.getStringExtra(ACTION_KEY));
+
+            Serializable serializablePayload = intent.getSerializableExtra(PAYLOAD);
+            @SuppressWarnings("unchecked")
+            HashMap<String, String> payloadObject = serializablePayload != null ? (HashMap<String, String>) serializablePayload : null;
+            returnObject.put(PAYLOAD, payloadObject);
 
             if(notification_id >= 0 && intent.getBooleanExtra(AUTO_CANCEL, true)){
                 cancelNotification(new Integer(notification_id));
             }
+
+            if(intent.getBooleanExtra(REQUIRES_INPUT, false)){
+                returnObject.put(BUTTON_INPUT, getInputText(intent, intent.getStringExtra(ACTION_KEY)));
+            }
+
+            returnObject.put(SOURCE_CHANNEL, onStatup ? BACKGROUND_SOURCE : FOREGROUND_SOURCE);
+
+            returnObject.put(CREATED_DATE, intent.getStringExtra(CREATED_DATE));
+            returnObject.put(RECEIVED_DATE, getUTCdate());
+
+
+            System.out.println("Notification received java: "+returnObject.toString());
 
             channel.invokeMethod("receiveNotification", returnObject);
 

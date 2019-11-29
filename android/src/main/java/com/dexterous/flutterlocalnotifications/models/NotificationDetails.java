@@ -15,7 +15,9 @@ import com.dexterous.flutterlocalnotifications.models.styles.StyleInformation;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 public class NotificationDetails {
     private static final String PAYLOAD = "payload";
@@ -122,7 +124,7 @@ public class NotificationDetails {
     public Time repeatTime;
     public Long millisecondsSinceEpoch;
     public Long calledAt;
-    public String payload;
+    public HashMap<String, String> payload;
     public String groupKey;
     public Boolean setAsGroupSummary;
     public Integer groupAlertBehavior;
@@ -144,7 +146,7 @@ public class NotificationDetails {
     public Integer ledOffMs;
     public String ticker;
     public Boolean allowWhileIdle;
-    public Map<String, Object> actionButtons;
+    public List<Object> actionButtons;
 
 
     // Note: this is set on the Android to save details about the icon that should be used when re-hydrating scheduled notifications when a device has been restarted.
@@ -152,11 +154,13 @@ public class NotificationDetails {
 
     public static NotificationDetails from(Map<String, Object> arguments) {
         NotificationDetails notificationDetails = new NotificationDetails();
-        notificationDetails.payload = (String) arguments.get(PAYLOAD);
         notificationDetails.id = (Integer) arguments.get(ID);
         notificationDetails.title = (String) arguments.get(TITLE);
         notificationDetails.body = (String) arguments.get(BODY);
 
+        if (arguments.containsKey(ACTION_BUTTONS)) {
+            readButtons(notificationDetails, arguments.get(ACTION_BUTTONS));
+        }
         if (arguments.containsKey(MILLISECONDS_SINCE_EPOCH)) {
             notificationDetails.millisecondsSinceEpoch = (Long) arguments.get(MILLISECONDS_SINCE_EPOCH);
         }
@@ -165,6 +169,11 @@ public class NotificationDetails {
         }
         if (arguments.containsKey(REPEAT_INTERVAL)) {
             notificationDetails.repeatInterval = RepeatInterval.values()[(Integer) arguments.get(REPEAT_INTERVAL)];
+        }
+        if (arguments.containsKey(PAYLOAD) && arguments.get(PAYLOAD) instanceof Map<?,?>) {
+            @SuppressWarnings("unchecked")
+            HashMap<String, String> payloadInstance = (HashMap<String, String>) arguments.get(PAYLOAD);
+            notificationDetails.payload = payloadInstance;
         }
         if (arguments.containsKey(REPEAT_TIME)) {
             @SuppressWarnings("unchecked")
@@ -208,7 +217,6 @@ public class NotificationDetails {
             readColor(notificationDetails, platformChannelSpecifics);
             readChannelInformation(notificationDetails, platformChannelSpecifics);
             readLedInformation(notificationDetails, platformChannelSpecifics);
-            readButtons(notificationDetails, platformChannelSpecifics);
 
             notificationDetails.largeIcon = (String) platformChannelSpecifics.get(LARGE_ICON);
 
@@ -226,17 +234,10 @@ public class NotificationDetails {
     }
 
     @SuppressWarnings("unchecked")
-    private static void readButtons(NotificationDetails notificationDetails, Map<String, Object> platformChannelSpecifics) {
+    private static void readButtons(NotificationDetails notificationDetails, Object argumentValue) {
 
-        // Using the constant ACTION_BUTTONS makes the app crashes in some platforms for a unknown reason.
-        // Seems like a recent Grove issue.
-        // Because of that i do not used the standard here.
-
-        if (platformChannelSpecifics.containsKey("actionButtons"/*ACTION_BUTTONS*/)) {
-            Object argumentValue = platformChannelSpecifics.get("actionButtons"/*ACTION_BUTTONS*/);
-            if (argumentValue != null && argumentValue instanceof Map<?,?>) {
-                notificationDetails.actionButtons = (Map<String, Object>) argumentValue;
-            }
+        if (argumentValue != null && argumentValue instanceof List<?>) {
+            notificationDetails.actionButtons = (List<Object>) argumentValue;
         }
     }
 

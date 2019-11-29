@@ -332,6 +332,7 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 }
 
 - (void) showUserNotification:(NotificationDetails *) notificationDetails NS_AVAILABLE_IOS(10.0) {
+
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     UNNotificationTrigger *trigger;
     content.title = notificationDetails.title;
@@ -343,7 +344,15 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             content.sound = [UNNotificationSound soundNamed:notificationDetails.sound];
         }
     }
-    content.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:notificationDetails.payload];
+    content.userInfo = [self
+        buildUserDict:notificationDetails.id
+        title:notificationDetails.title
+        presentAlert:notificationDetails.presentAlert
+        presentSound:notificationDetails.presentSound
+        presentBadge:notificationDetails.presentBadge
+        payload:notificationDetails.payload
+    ];
+
     if(notificationDetails.secondsSinceEpoch == nil) {
         NSTimeInterval timeInterval = 0.1;
         Boolean repeats = NO;
@@ -444,7 +453,7 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             notification.soundName = notificationDetails.sound;
         }
     }
-    
+
     notification.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:notificationDetails.payload];
     if(notificationDetails.secondsSinceEpoch == nil) {
         if(notificationDetails.repeatInterval != nil) {
