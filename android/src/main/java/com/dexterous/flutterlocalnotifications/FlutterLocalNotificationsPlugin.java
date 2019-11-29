@@ -104,6 +104,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_DRAWABLE_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a drawable resource to your Android head project.";
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
+    public static String NOTIFICATION_TITLE = "title";
     public static String ACTION_KEY = "action_key";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
@@ -139,7 +140,9 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         setupNotificationChannel(context, notificationDetails);
         Intent intent = new Intent(context, getMainActivityClass(context));
         intent.setAction(SELECT_NOTIFICATION);
+
         intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+        intent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
 
         intent.putExtra(CREATED_DATE, getUTCdate());
 
@@ -213,6 +216,8 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
                 actionIntent.putExtra(CREATED_DATE, getUTCdate());
 
                 actionIntent.putExtra(NOTIFICATION_ID, notificationDetails.id);
+                actionIntent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
+
                 actionIntent.putExtra(ACTION_KEY, buttonKey);
 
                 setPayload(actionIntent, notificationDetails);
@@ -942,17 +947,19 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
         if (
             SELECT_NOTIFICATION.equals(action_name) ||
             action_name.startsWith(ACTION_NOTIFICATION)
-        ) {
+        ){
 
             Map<String, Object> returnObject = new HashMap<>();
 
             int notification_id = intent.getIntExtra(NOTIFICATION_ID, -1);
 
-            returnObject.put(NOTIFICATION_ID, notification_id);
+            returnObject.put(NOTIFICATION_ID,    notification_id);
+            returnObject.put(NOTIFICATION_TITLE, intent.getStringExtra(NOTIFICATION_TITLE));
+
             returnObject.put(ACTION_KEY, intent.getStringExtra(ACTION_KEY));
 
-            @SuppressWarnings("unchecked")
             Serializable serializablePayload = intent.getSerializableExtra(PAYLOAD);
+            @SuppressWarnings("unchecked")
             HashMap<String, String> payloadObject = serializablePayload != null ? (HashMap<String, String>) serializablePayload : null;
             returnObject.put(PAYLOAD, payloadObject);
 

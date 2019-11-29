@@ -321,14 +321,6 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () => _showNotificationWithPayloadObject(2)
                   ),
                   renderSimpleButton(
-                    'Show plain notification with payload and action buttons',
-                    onPressed: () => _showNotificationWithButtons(2)
-                  ),
-                  renderSimpleButton(
-                      'Show plain notification with payload, reply and action button',
-                      onPressed: () => _showNotificationWithButtonsAndReply(2)
-                  ),
-                  renderSimpleButton(
                     'Show plain notification that has no body with payload',
                     onPressed: () => _showNotificationWithNoBody(2)
                   ),
@@ -341,6 +333,32 @@ class _HomePageState extends State<HomePage> {
                     backgroundColor: Colors.red,
                     labelColor: Colors.white,
                     onPressed: () => _cancelNotification(0)
+                  ),
+
+                  /* ******************************************************************** */
+                  renderDivisor( title: 'Action Buttons' ),
+                  renderNote('Action buttons can be just tap or requires to insert a input text before go.'),
+                  renderSimpleButton(
+                      'Show plain notification with payload and action buttons',
+                      onPressed: () => _showNotificationWithButtons(2)
+                  ),
+                  renderSimpleButton(
+                      'Show plain notification with payload, reply and action button',
+                      onPressed: () => _showNotificationWithButtonsAndReply(2)
+                  ),
+                  renderSimpleButton(
+                      'Show Big picture notification with payload, reply and action button',
+                      onPressed: () => _showBigPictureNotificationActionButtonsAndReply(2)
+                  ),
+                  renderSimpleButton(
+                      'Show Big text notification with payload, reply and action button',
+                      onPressed: () => _showBigTextNotificationWithActionAndReply(2)
+                  ),
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: () => _cancelNotification(0)
                   ),
 
                   /* ******************************************************************** */
@@ -883,19 +901,68 @@ class _HomePageState extends State<HomePage> {
     await flutterLocalNotificationsPlugin.showNotification(
         platformChannelSpecifics,
         NotificationContent(
+            id: id,
+            title: 'big text title',
+            body: 'silent body',
+            actionButtons: [
+              NotificationActionButton(
+                  key: 'READED',
+                  label: 'Mark as readed',
+                  autoCancel: true
+              ),
+              NotificationActionButton(
+                  key: 'REMEMBER',
+                  label: 'Remember-me later',
+                  autoCancel: false
+              )
+            ],
+            payload: {
+              'uuid' : 'uuid-test'
+            }
+        )
+    );
+  }
+
+  Future<void> _showBigPictureNotificationActionButtonsAndReply(int id) async {
+    var largeIconPath = await _downloadAndSaveImage(
+        'http://via.placeholder.com/48x48', 'largeIcon');
+    var bigPicturePath = await _downloadAndSaveImage(
+        'http://via.placeholder.com/300x800', 'bigPictureAction');
+    var bigPictureStyleInformation = BigPictureStyleInformation(
+        bigPicturePath, BitmapSource.FilePath,
+        largeIcon: largeIconPath,
+        largeIconBitmapSource: BitmapSource.FilePath,
+        contentTitle: 'overridden <b>big</b> content title',
+        htmlFormatContentTitle: true,
+        summaryText: 'summary <i>text</i>',
+        htmlFormatSummaryText: true);
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'big text channel id',
+        'big text channel name',
+        'big text channel description',
+        style: AndroidNotificationStyle.BigPicture,
+        styleInformation: bigPictureStyleInformation
+    );
+    var platformChannelSpecifics =
+    NotificationDetails(androidPlatformChannelSpecifics, null);
+
+    await flutterLocalNotificationsPlugin.showNotification(
+        platformChannelSpecifics,
+        NotificationContent(
           id: id,
           title: 'big text title',
           body: 'silent body',
           actionButtons: [
             NotificationActionButton(
-                key: 'READED',
-                label: 'Mark as readed',
-                autoCancel: true
+                key: 'REPLY',
+                label: 'Reply',
+                autoCancel: true,
+                requiresInput: true
             ),
             NotificationActionButton(
                 key: 'REMEMBER',
                 label: 'Remember-me later',
-                autoCancel: false
+                autoCancel: true
             )
           ],
           payload: {
@@ -963,6 +1030,50 @@ class _HomePageState extends State<HomePage> {
             id: id,
             title: 'Big text title',
             body: 'Big text body',
+            payload: {
+              'uuid' : 'uuid-test'
+            }
+        ));
+  }
+
+  Future<void> _showBigTextNotificationWithActionAndReply(int id) async {
+    var bigTextStyleInformation = BigTextStyleInformation(
+      'Lorem <i>ipsum dolor sit</i> amet, consectetur <b>adipiscing elit</b>, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+      htmlFormatBigText: true,
+      contentTitle: 'overridden <b>big</b> content title',
+      htmlFormatContentTitle: true,
+      summaryText: 'summary <i>text</i>',
+      htmlFormatSummaryText: true,
+
+    );
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'big text channel id',
+        'big text channel name',
+        'big text channel description',
+        color: Colors.orange,
+        style: AndroidNotificationStyle.BigText,
+        styleInformation: bigTextStyleInformation);
+    var platformChannelSpecifics =
+    NotificationDetails(androidPlatformChannelSpecifics, null);
+    await flutterLocalNotificationsPlugin.showNotification(
+        platformChannelSpecifics,
+        NotificationContent(
+            id: id,
+            title: 'Big text title',
+            body: 'Big text body',
+            actionButtons: [
+              NotificationActionButton(
+                  key: 'REPLY',
+                  label: 'Reply',
+                  autoCancel: true,
+                  requiresInput: true
+              ),
+              NotificationActionButton(
+                  key: 'REMEMBER',
+                  label: 'Remember-me later',
+                  autoCancel: true
+              )
+            ],
             payload: {
               'uuid' : 'uuid-test'
             }

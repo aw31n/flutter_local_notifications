@@ -5,6 +5,7 @@ enum NotificationSource{ foreground, background }
 class ReceivedNotification {
 
   int notification_id = -1;
+  String title;
   NotificationSource source;
   String buttonKeyPressed = '';
   String buttonKeyInput = '';
@@ -14,6 +15,7 @@ class ReceivedNotification {
 
   ReceivedNotification({
     this.notification_id,
+    this.title,
     this.source,
     this.buttonKeyPressed,
     this.buttonKeyInput,
@@ -28,6 +30,7 @@ class ReceivedNotification {
           null;
 
     notification_id  = receivedContent['notification_id'];
+    title            = receivedContent['title'];
     buttonKeyPressed = receivedContent['action_key'];
     buttonKeyInput   = receivedContent['action_input'];
     createdDate      = receivedContent['created_date'];
@@ -43,6 +46,7 @@ class ReceivedNotification {
     return {
       'source': source,
       'notification_id': notification_id,
+      'title': title,
       'createdDate': createdDate,
       'receivedDate': receivedDate,
       'buttonKeyPressed': buttonKeyPressed,
