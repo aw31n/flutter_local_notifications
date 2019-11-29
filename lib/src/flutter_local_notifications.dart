@@ -432,10 +432,22 @@ class FlutterLocalNotificationsPlugin {
         // keep the deprecated method working for a while
         if(call.arguments['payload'] != null && call.arguments['payload']['deprecated'] != null){
 
-          return selectNotificationCallback(
+          if(call.arguments['source'] == 'NotificationSource.foreground'){
+
+            return didReceiveLocalNotificationCallback(
+                call.arguments['id'],
+                call.arguments['title'],
+                call.arguments['body'],
+                call.arguments['payload']['plainText'] ?? ''
+            );
+
+          } else {
+
+            return selectNotificationCallback(
               // Not safe
-              call.arguments['payload']['plainText'] ?? ''
-          );
+                call.arguments['payload']['plainText'] ?? ''
+            );
+          }
 
         } else {
 

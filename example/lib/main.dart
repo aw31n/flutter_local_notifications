@@ -15,7 +15,7 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 // Streams are created so that app can respond to notification-related events since the plugin is initialised in the `main` function
-final BehaviorSubject<ReceivedNotification> didReceiveNotificationSubject = BehaviorSubject<ReceivedNotification>();
+final BehaviorSubject<String> didReceiveNotificationSubject = BehaviorSubject<String>();
 final BehaviorSubject<String> selectNotificationSubject = BehaviorSubject<String>();
 final BehaviorSubject<ReceivedNotification> receiveNotificationSubject = BehaviorSubject<ReceivedNotification>();
 
@@ -41,11 +41,7 @@ Future<void> main() async {
       AndroidInitializationSettings('app_icon'),
       IOSInitializationSettings(
           onDidReceiveLocalNotification: (int id, String title, String body, String payload) async {
-            receiveNotificationSubject.add(
-                ReceivedNotification(notification_id: id, source: NotificationSource.foreground,
-                    payload: { 'plainText': payload , 'deprecated': 'true' }
-                )
-            );
+            didReceiveNotificationSubject.add(payload);
           }
       )
   );
@@ -84,7 +80,7 @@ class _HomePageState extends State<HomePage> {
 
   bool patternTestShouldSchedule = false;
 
-  showAlertDidReceiveNotification(ReceivedNotification receivedNotification){
+  _showAlertDidReceiveNotification(String payload){
     showDialog(
         context: context,
         builder: (BuildContext context) =>
@@ -97,8 +93,8 @@ class _HomePageState extends State<HomePage> {
                   child: Text('Ok'),
                   onPressed: () async {
                     Navigator.of(context, rootNavigator: true).pop();
-                    Navigator.push( context, MaterialPageRoute( builder: (context) =>
-                        SecondScreen(receivedNotification.toString())
+                    Navigator.push(context, MaterialPageRoute( builder: (context) =>
+                        SecondScreen(payload)
                     ));
                   },
                 )
@@ -122,7 +118,7 @@ class _HomePageState extends State<HomePage> {
     receiveNotificationSubject.stream.listen(
         (ReceivedNotification receivedNotification){
           if(receivedNotification.source == NotificationSource.foreground){
-            showAlertDidReceiveNotification(receivedNotification);
+            _showAlertDidReceiveNotification(receivedNotification.toString());
           } else {
             Navigator.push( context, MaterialPageRoute( builder: (context) =>
                 SecondScreen(receivedNotification.toString())
@@ -132,9 +128,10 @@ class _HomePageState extends State<HomePage> {
     );
 
     didReceiveNotificationSubject.stream.listen(
-      (receivedNotification) {
-        showAlertDidReceiveNotification(receivedNotification);
-      });
+      (String payload) {
+        _showAlertDidReceiveNotification(payload);
+    });
+
   }
 
   @override
@@ -302,6 +299,12 @@ class _HomePageState extends State<HomePage> {
                   renderSimpleButton(
                       'Show plain notification with payload object',
                       onPressed: _showNotificationWithPayloadObject
+                  ),
+                  renderSimpleButton(
+                      'Cancel notification',
+                      backgroundColor: Colors.red,
+                      labelColor: Colors.white,
+                      onPressed: _cancelNotification
                   ),
 
                   /* ******************************************************************** */
