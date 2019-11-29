@@ -14,7 +14,8 @@ class ReceivedNotification {
     this.notification_id,
     this.source,
     this.buttonKeyPressed,
-    this.buttonKeyInput
+    this.buttonKeyInput,
+    this.payload
   });
 
   ReceivedNotification fromMap(Map<String, dynamic> receivedContent) {

@@ -942,7 +942,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             System.out.println("Notification received java: "+returnObject.toString());
 
-            channel.invokeMethod(onStatup ? "didReceiveLocalNotification" : "receiveNotification", returnObject);
+            channel.invokeMethod("receiveNotification", returnObject);
 
             return true;
         }

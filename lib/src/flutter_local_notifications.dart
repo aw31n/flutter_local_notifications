@@ -27,7 +27,7 @@ typedef ReceiveNotificationCallback = Future<dynamic> Function(ReceivedNotificat
 
 // Signature of the callback that is triggered when a notification is shown whilst the app is in the foreground. Applicable to iOS versions < 10 only
 typedef DidReceiveLocalNotificationCallback = Future<dynamic> Function(
-    int id, String title, String body,  Map<String, String> payload);
+    int id, String title, String body, String payload);
 
 /// The available intervals for periodically showing notifications
 enum RepeatInterval { EveryMinute, Hourly, Daily, Weekly }
@@ -161,7 +161,7 @@ class FlutterLocalNotificationsPlugin {
   }
 
   /// (DEPRECATED) Show a notification with an optional payload that will be passed back to the app when a notification is tapped
-  @Deprecated('This method incentives unsecure practices')
+  @Deprecated('This method incentives unsecure practices. Use showNotification instead')
   Future<void> show(
       int id, String title, String body,
       NotificationDetails notificationDetails,
@@ -197,7 +197,7 @@ class FlutterLocalNotificationsPlugin {
   /// Schedules a notification to be shown at the specified time with an optional payload that is passed through when a notification is tapped
   /// The [androidAllowWhileIdle] parameter is Android-specific and determines if the notification should still be shown at the specified time
   /// even when in a low-power idle mode.
-  @Deprecated('This method incentives unsecure practices')
+  @Deprecated('This method incentives unsecure practices. Use showNotificationSchedule instead')
   Future<void> schedule(int id, String title, String body,
       DateTime scheduledDate, NotificationDetails notificationDetails,
       {String payload, bool androidAllowWhileIdle = false}) async {
@@ -248,7 +248,7 @@ class FlutterLocalNotificationsPlugin {
 
   /// Periodically show a notification using the specified interval.
   /// For example, specifying a hourly interval means the first time the notification will be an hour after the method has been called and then every hour after that.
-  @Deprecated('This method incentives unsecure practices')
+  @Deprecated('This method incentives unsecure practices. Use showNotificationPeriodically instead')
   Future<void> periodicallyShow(int id, String title, String body,
       RepeatInterval repeatInterval, NotificationDetails notificationDetails,
       {String payload}) async {
@@ -288,7 +288,7 @@ class FlutterLocalNotificationsPlugin {
   }
 
   /// Shows a notification on a daily interval at the specified time
-  @Deprecated('This method incentives unsecure practices')
+  @Deprecated('This method incentives unsecure practices. Use showNotificationDailyAtTime instead')
   Future<void> showDailyAtTime(int id, String title, String body,
       Time notificationTime, NotificationDetails notificationDetails,
       {String payload}) async {
@@ -328,7 +328,7 @@ class FlutterLocalNotificationsPlugin {
   }
 
   /// Shows a notification on a daily interval at the specified time
-  @Deprecated('This method incentives unsecure practices')
+  @Deprecated('This method incentives unsecure practices. Use showNotificationWeeklyAtDayAndTime instead')
   Future<void> showWeeklyAtDayAndTime(int id, String title, String body,
       Day day, Time notificationTime, NotificationDetails notificationDetails,
       {String payload}) async {

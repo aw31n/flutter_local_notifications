@@ -37,7 +37,18 @@ Future<void> main() async {
   // needed if you intend to initialize in the `main` function
   WidgetsFlutterBinding.ensureInitialized();
 
-  InitializationSettings initializationSettings = InitializationSettings( AndroidInitializationSettings('app_icon'), IOSInitializationSettings() );
+  InitializationSettings initializationSettings = InitializationSettings(
+      AndroidInitializationSettings('app_icon'),
+      IOSInitializationSettings(
+          onDidReceiveLocalNotification: (int id, String title, String body, String payload) async {
+            receiveNotificationSubject.add(
+                ReceivedNotification(notification_id: id, source: NotificationSource.foreground,
+                    payload: { 'plainText': payload , 'deprecated': 'true' }
+                )
+            );
+          }
+      )
+  );
 
   await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
@@ -73,31 +84,10 @@ class _HomePageState extends State<HomePage> {
 
   bool patternTestShouldSchedule = false;
 
-  @override
-  void initState() {
-    super.initState();
-
-    selectNotificationSubject.stream.listen(
-            (String payloadPainText){
-          Navigator.push( context, MaterialPageRoute( builder: (context) =>
-              SecondScreen(payloadPainText)
-          ));
-        }
-    );
-
-    receiveNotificationSubject.stream.listen(
-            (ReceivedNotification receivedNotification){
-          Navigator.push( context, MaterialPageRoute( builder: (context) =>
-              SecondScreen(receivedNotification.toString())
-          ));
-        }
-    );
-
-    didReceiveNotificationSubject.stream.listen(
-      (receivedNotification) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) =>
+  showAlertDidReceiveNotification(ReceivedNotification receivedNotification){
+    showDialog(
+        context: context,
+        builder: (BuildContext context) =>
             CupertinoAlertDialog(
               title: Text('didReceivedNotification'),
               content: Text('notification received when the app was closed'),
@@ -107,11 +97,43 @@ class _HomePageState extends State<HomePage> {
                   child: Text('Ok'),
                   onPressed: () async {
                     Navigator.of(context, rootNavigator: true).pop();
+                    Navigator.push( context, MaterialPageRoute( builder: (context) =>
+                        SecondScreen(receivedNotification.toString())
+                    ));
                   },
                 )
               ],
             )
-        );
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    selectNotificationSubject.stream.listen(
+        (String payloadPainText){
+          Navigator.push( context, MaterialPageRoute( builder: (context) =>
+              SecondScreen(payloadPainText)
+          ));
+        }
+    );
+
+    receiveNotificationSubject.stream.listen(
+        (ReceivedNotification receivedNotification){
+          if(receivedNotification.source == NotificationSource.foreground){
+            showAlertDidReceiveNotification(receivedNotification);
+          } else {
+            Navigator.push( context, MaterialPageRoute( builder: (context) =>
+                SecondScreen(receivedNotification.toString())
+            ));
+          }
+        }
+    );
+
+    didReceiveNotificationSubject.stream.listen(
+      (receivedNotification) {
+        showAlertDidReceiveNotification(receivedNotification);
       });
   }
 

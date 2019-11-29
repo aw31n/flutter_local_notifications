@@ -21,6 +21,7 @@ class IOSInitializationSettings {
   final bool defaultPresentBadge;
 
   /// Callback for handling when a notification is triggered while the app is in the foreground. Applicable to iOS versions < 10 only
+  @Deprecated('This method incentives unsecure practices. Use receivedNotification + NotificationSource enum instead')
   final DidReceiveLocalNotificationCallback onDidReceiveLocalNotification;
 
   const IOSInitializationSettings(
