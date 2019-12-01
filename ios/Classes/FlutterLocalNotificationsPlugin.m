@@ -10,6 +10,7 @@
     bool playSound;
     bool updateBadge;
     bool initialized;
+    bool fromBackground;
     bool launchingAppFromNotification;
     NSUserDefaults *persistentState;
     NSObject<FlutterPluginRegistrar> *_registrar;
@@ -179,7 +180,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
         }
         [center requestAuthorizationWithOptions:(authorizationOptions) completionHandler:^(BOOL granted, NSError * _Nullable error) {
             if(self->launchPayload != nil) {
-                NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:self->launchPayload] fromSource:@"foreground"];
+                NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:self->launchPayload] withActionKey:@""
+                                                                      fromSource:fromBackground ? @"background" : @"foreground"];
                 [self handleSelectNotification:responseDictionary];
             }
             result(@(granted));
@@ -198,7 +200,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
         UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:notificationTypes categories:nil];
         [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
         if(launchNotification != nil) {
-            NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:launchNotification.userInfo[PAYLOAD]] fromSource:@"foreground"];
+            NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:launchNotification.userInfo[PAYLOAD]] withActionKey:@""
+                                                                  fromSource: fromBackground ? @"background" : @"foreground"];
             [self handleSelectNotification:responseDictionary];
         }
         result(@YES);
@@ -344,28 +347,52 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 }
 
 - (NSDictionary *)getPayloadDictionary:(NSDictionary *)originalPayload withId:(NSNumber *) notificationId andTitle:(NSString *)title {
-    id keys[] = { @"notification_id", @"title", @"action_key", @"action_input", @"created_date",         @"received_date", @"payload" };
-    id objects[] = { notificationId,    title,  @"",           @"",             [self getActualUTCTime], @"",              originalPayload };
+
+    if(title == nil){
+        title = [NSNull null];
+    }
     
-    NSUInteger count = sizeof(objects) / sizeof(id);
-    NSDictionary *responseDictionary = [NSDictionary dictionaryWithObjects:objects forKeys:keys count:count];
+    if([originalPayload count] == 0){
+        originalPayload = [NSNull null];
+    }
+    
+    NSDictionary *responseDictionary = @{
+                     @"notification_id" : notificationId,
+                     @"title" : title,
+                     @"action_key" : @"",
+                     @"action_input" : @"",
+                     @"created_date" : [self getActualUTCTime],
+                     @"received_date" : @"",
+                     @"payload": originalPayload
+                 };
     
     return responseDictionary;
 }
 
-- (NSDictionary *)updatePayloadDictionary:(NSDictionary *)oldDict fromSource:(NSString *)source {
+- (NSDictionary *)updatePayloadDictionary:(NSDictionary *)oldDict withActionKey:(NSString *)actionKey fromSource:(NSString *)source {
+    fromBackground = false;
+    
+    if([oldDict count] == 0){
+        return [NSNull null];
+    }
     NSMutableDictionary *newDict = [[NSMutableDictionary alloc] init];
     
     [newDict addEntriesFromDictionary:oldDict];
     [newDict setObject:[self getActualUTCTime] forKey:@"received_date"];
     [newDict setObject:[NSString stringWithFormat:@"NotificationSource.%@", source] forKey:@"source"];
+    [newDict setObject:actionKey forKey:@"action_key"];
     
     NSDictionary *responseDict = [newDict copy];
     
     return responseDict;
 }
 
+
+
 - (NSString *)dictionaryToString:(NSDictionary *)dictionary {
+    if([dictionary count] == 0){
+        return [NSNull null];
+    }
     NSError *err;
     NSData *jsonData = [NSJSONSerialization  dataWithJSONObject:dictionary options:0 error:&err];
     NSString *encodedString = [[NSString alloc] initWithData:jsonData   encoding:NSUTF8StringEncoding];
@@ -374,6 +401,9 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 }
 
 - (NSDictionary *)stringToDictionary:(NSString *)encodedString {
+    if([encodedString length] == 0){
+        return [NSNull null];
+    }
     NSError *err;
     NSData *data =[encodedString dataUsingEncoding:NSUTF8StringEncoding];
     NSDictionary *responseDictionary;
@@ -501,6 +531,7 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 - (void) showLocalNotification:(NotificationDetails *) notificationDetails {
     UILocalNotification *notification = [[UILocalNotification alloc] init];
     notification.alertBody = notificationDetails.body;
+    
     if(@available(iOS 8.2, *)) {
         notification.alertTitle = notificationDetails.title;
     }
@@ -564,6 +595,10 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification :(UNNotification *)notification withCompletionHandler :(void (^)(UNNotificationPresentationOptions))completionHandler NS_AVAILABLE_IOS(10.0) {
     UNNotificationPresentationOptions presentationOptions = 0;
+    
+    NSLog(@"Received1: %@", notification.request.content.userInfo);
+    //NSLog(@"Received1-action: %@", response.actionIdentifier);
+
     NSNumber *presentAlertValue = (NSNumber*)notification.request.content.userInfo[PRESENT_ALERT];
     NSNumber *presentSoundValue = (NSNumber*)notification.request.content.userInfo[PRESENT_SOUND];
     NSNumber *presentBadgeValue = (NSNumber*)notification.request.content.userInfo[PRESENT_BADGE];
@@ -593,23 +628,36 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
 didReceiveNotificationResponse:(UNNotificationResponse *)response
          withCompletionHandler:(void (^)(void))completionHandler NS_AVAILABLE_IOS(10.0) {
-    if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
+
+    NSString *responseActionKey = response.actionIdentifier;
+
+    if ([responseActionKey isEqualToString:UNNotificationDefaultActionIdentifier]){
+        responseActionKey = @"";
+    }
+    
+    NSLog(@"Received2: %@", response.notification.request.content.userInfo);
+    NSLog(@"Received2-action: %@", responseActionKey);
+    
+    //if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
         NSString *payload = (NSString *) response.notification.request.content.userInfo[PAYLOAD];
         if(initialized) {
-            NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:payload] fromSource:@"foreground"];
+            NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:payload] withActionKey:responseActionKey
+                                                                 fromSource: fromBackground ? @"background" : @"foreground"];
             
             [self handleSelectNotification:payloadDictionary];
         } else {
             launchPayload = payload;
             launchingAppFromNotification = true;
+            fromBackground = launchingAppFromNotification;
         }
-    }
+    //}
 }
 - (BOOL)application:(UIApplication *)application
 didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     if (launchOptions != nil) {
         launchNotification = (UILocalNotification *)[launchOptions objectForKey:UIApplicationLaunchOptionsLocalNotificationKey];
         launchingAppFromNotification = launchNotification != nil;
+        fromBackground = launchingAppFromNotification;
     }
     
     return YES;
@@ -621,7 +669,8 @@ didReceiveLocalNotification:(UILocalNotification*)notification {
         return;
     }
     
-    NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:notification.userInfo[PAYLOAD]] fromSource:@"background"];
+    NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:notification.userInfo[PAYLOAD]] withActionKey:@"test"
+                                                         fromSource: fromBackground ? @"background" : @"foreground"];
     [_channel invokeMethod:DID_RECEIVE_LOCAL_NOTIFICATION arguments:payloadDictionary];
 }
 

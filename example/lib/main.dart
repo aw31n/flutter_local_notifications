@@ -1485,11 +1485,10 @@ class SecondScreen extends StatelessWidget {
         title: Text('Second Screen with Payload', style: TextStyle(fontSize: 16)),
       ),
       body: Container(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+        padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 20),
+        width: MediaQuery.of(context).size.width,
+        child: Center(
+          child: ListView(
               children: <Widget>[
                 Text('Payload', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),),
                 SizedBox(height: 20 ),
@@ -1503,7 +1502,6 @@ class SecondScreen extends StatelessWidget {
                 ),
               ],
             )
-          ]
         ),
       ),
     );
