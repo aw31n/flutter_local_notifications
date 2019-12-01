@@ -47,6 +47,7 @@ NSString *const PLATFORM_SPECIFICS = @"platformSpecifics";
 NSString *const ID = @"id";
 NSString *const TITLE = @"title";
 NSString *const BODY = @"body";
+NSString *const ACTION_BUTTONS = @"actionButtons";
 NSString *const SOUND = @"sound";
 NSString *const PRESENT_ALERT = @"presentAlert";
 NSString *const PRESENT_SOUND = @"presentSound";
@@ -178,7 +179,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
         }
         [center requestAuthorizationWithOptions:(authorizationOptions) completionHandler:^(BOOL granted, NSError * _Nullable error) {
             if(self->launchPayload != nil) {
-                [self handleSelectNotification:self->launchPayload];
+                NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:self->launchPayload] fromSource:@"foreground"];
+                [self handleSelectNotification:responseDictionary];
             }
             result(@(granted));
         }];
@@ -196,8 +198,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
         UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:notificationTypes categories:nil];
         [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
         if(launchNotification != nil) {
-            NSString *payload = launchNotification.userInfo[PAYLOAD];
-            [self handleSelectNotification:payload];
+            NSDictionary *responseDictionary = [self updatePayloadDictionary:[self stringToDictionary:launchNotification.userInfo[PAYLOAD]] fromSource:@"foreground"];
+            [self handleSelectNotification:responseDictionary];
         }
         result(@YES);
     }
@@ -213,7 +215,6 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     if(call.arguments[BODY] != [NSNull null]) {
         notificationDetails.body = call.arguments[BODY];
     }
-    notificationDetails.payload = call.arguments[PAYLOAD];
     notificationDetails.presentAlert = displayAlert;
     notificationDetails.presentSound = playSound;
     notificationDetails.presentBadge = updateBadge;
@@ -230,6 +231,12 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             notificationDetails.presentBadge = [[platformSpecifics objectForKey:PRESENT_BADGE] boolValue];
         }
         notificationDetails.sound = platformSpecifics[SOUND];
+    }
+    if(call.arguments[ACTION_BUTTONS] != [NSNull null]) {
+        notificationDetails.actionButtons = call.arguments[ACTION_BUTTONS];
+    }
+    if(call.arguments[PAYLOAD] != [NSNull null]) {
+        notificationDetails.payload = call.arguments[PAYLOAD];
     }
     if([SCHEDULE_METHOD isEqualToString:call.method]) {
         notificationDetails.secondsSinceEpoch = @([call.arguments[MILLISECONDS_SINCE_EPOCH] longLongValue] / 1000);
@@ -326,6 +333,57 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     }
 }
 
+- (NSString *)getActualUTCTime {
+    NSDate *currentDate = [[NSDate alloc] init];
+    
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    
+    NSString *localDateString = [dateFormatter stringFromDate:currentDate];
+    return localDateString;
+}
+
+- (NSDictionary *)getPayloadDictionary:(NSDictionary *)originalPayload withId:(NSNumber *) notificationId andTitle:(NSString *)title {
+    id keys[] = { @"notification_id", @"title", @"action_key", @"action_input", @"created_date",         @"received_date", @"payload" };
+    id objects[] = { notificationId,    title,  @"",           @"",             [self getActualUTCTime], @"",              originalPayload };
+    
+    NSUInteger count = sizeof(objects) / sizeof(id);
+    NSDictionary *responseDictionary = [NSDictionary dictionaryWithObjects:objects forKeys:keys count:count];
+    
+    return responseDictionary;
+}
+
+- (NSDictionary *)updatePayloadDictionary:(NSDictionary *)oldDict fromSource:(NSString *)source {
+    NSMutableDictionary *newDict = [[NSMutableDictionary alloc] init];
+    
+    [newDict addEntriesFromDictionary:oldDict];
+    [newDict setObject:[self getActualUTCTime] forKey:@"received_date"];
+    [newDict setObject:[NSString stringWithFormat:@"NotificationSource.%@", source] forKey:@"source"];
+    
+    NSDictionary *responseDict = [newDict copy];
+    
+    return responseDict;
+}
+
+- (NSString *)dictionaryToString:(NSDictionary *)dictionary {
+    NSError *err;
+    NSData *jsonData = [NSJSONSerialization  dataWithJSONObject:dictionary options:0 error:&err];
+    NSString *encodedString = [[NSString alloc] initWithData:jsonData   encoding:NSUTF8StringEncoding];
+    NSLog(@"Payload: %@",encodedString);
+    return encodedString;
+}
+
+- (NSDictionary *)stringToDictionary:(NSString *)encodedString {
+    NSError *err;
+    NSData *data =[encodedString dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *responseDictionary;
+    if(data!=nil){
+        responseDictionary = (NSDictionary *)[NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:&err];
+    }
+    NSLog(@"Payload returned: %@",encodedString);
+    return responseDictionary;
+}
+
 - (NSDictionary*)buildUserDict:(NSNumber *)id title:(NSString *)title presentAlert:(bool)presentAlert presentSound:(bool)presentSound presentBadge:(bool)presentBadge payload:(NSString *)payload {
     NSDictionary *userDict =[NSDictionary dictionaryWithObjectsAndKeys:id, NOTIFICATION_ID, title, TITLE, [NSNumber numberWithBool:presentAlert], PRESENT_ALERT, [NSNumber numberWithBool:presentSound], PRESENT_SOUND, [NSNumber numberWithBool:presentBadge], PRESENT_BADGE, payload, PAYLOAD, nil];
     return userDict;
@@ -344,13 +402,16 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
             content.sound = [UNNotificationSound soundNamed:notificationDetails.sound];
         }
     }
+    NSDictionary *payloadDictionary = [self getPayloadDictionary:notificationDetails.payload
+                                                  withId:notificationDetails.id
+                                                andTitle:notificationDetails.title];
     content.userInfo = [self
         buildUserDict:notificationDetails.id
         title:notificationDetails.title
         presentAlert:notificationDetails.presentAlert
         presentSound:notificationDetails.presentSound
         presentBadge:notificationDetails.presentBadge
-        payload:notificationDetails.payload
+        payload:[self dictionaryToString:payloadDictionary]
     ];
 
     if(notificationDetails.secondsSinceEpoch == nil) {
@@ -404,32 +465,30 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
 
     // https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/SupportingNotificationsinYourApp.html
 
-    UNNotificationAction *acceptAction = [UNNotificationAction
-        actionWithIdentifier: @"ACCEPT_ACTION"
-        title: @"Accept"
-        options: UNNotificationActionOptionNone
-    ];
+    NSMutableArray *buttons = [[NSMutableArray alloc] init];
+    for (id button in notificationDetails.actionButtons) {
+        
+        UNNotificationAction *actionButton = [UNNotificationAction
+                                              actionWithIdentifier: button[@"key"]
+                                              title: button[@"label"]
+                                              options: UNNotificationActionOptionNone
+                                              ];
+        [buttons addObject:actionButton];
+    }
 
-    UNNotificationAction *declineAction = [UNNotificationAction
-        actionWithIdentifier: @"DECLINE_ACTION"
-        title: @"Decline"
-        options: UNNotificationActionOptionForeground
-    ];
-
-    // Define the notification type
-    UNNotificationCategory *meetingInviteCategory = [UNNotificationCategory
-          categoryWithIdentifier: @"MEETING_INVITATION"
-          actions: @[acceptAction, declineAction]
+    UNNotificationCategory *actionButtonsCategory = [UNNotificationCategory
+          categoryWithIdentifier: @"ACTION_BUTTONS"
+          actions: buttons
           intentIdentifiers: @[]
           options: UNNotificationCategoryOptionNone
     ];
 
-    content.categoryIdentifier = @"MEETING_INVITATION";
+    content.categoryIdentifier = @"ACTION_BUTTONS";
 
     UNNotificationRequest* notificationRequest = [UNNotificationRequest
                                                   requestWithIdentifier:[notificationDetails.id stringValue] content:content trigger:trigger];
 
-    [center setNotificationCategories:[NSSet setWithObjects: meetingInviteCategory, nil]];
+    [center setNotificationCategories:[NSSet setWithObjects: actionButtonsCategory, nil]];
 
     [center addNotificationRequest:notificationRequest withCompletionHandler:^(NSError * _Nullable error) {
         if (error != nil) {
@@ -454,7 +513,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
         }
     }
 
-    notification.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:notificationDetails.payload];
+    notification.userInfo = [self buildUserDict:notificationDetails.id title:notificationDetails.title presentAlert:notificationDetails.presentAlert presentSound:notificationDetails.presentSound presentBadge:notificationDetails.presentBadge payload:[self dictionaryToString:notificationDetails.payload]];
+    
     if(notificationDetails.secondsSinceEpoch == nil) {
         if(notificationDetails.repeatInterval != nil) {
             NSTimeInterval timeInterval = 0;
@@ -526,8 +586,8 @@ typedef NS_ENUM(NSInteger, RepeatInterval) {
     completionHandler(presentationOptions);
 }
 
-- (void)handleSelectNotification:(NSString *)payload {
-    [_channel invokeMethod:@"selectNotification" arguments:payload];
+- (void)handleSelectNotification:(NSDictionary *)payload {
+    [_channel invokeMethod:@"receiveNotification" arguments:payload];
 }
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
@@ -536,7 +596,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if ([response.actionIdentifier isEqualToString:UNNotificationDefaultActionIdentifier]) {
         NSString *payload = (NSString *) response.notification.request.content.userInfo[PAYLOAD];
         if(initialized) {
-            [self handleSelectNotification:payload];
+            NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:payload] fromSource:@"foreground"];
+            
+            [self handleSelectNotification:payloadDictionary];
         } else {
             launchPayload = payload;
             launchingAppFromNotification = true;
@@ -559,18 +621,8 @@ didReceiveLocalNotification:(UILocalNotification*)notification {
         return;
     }
     
-    NSMutableDictionary *arguments = [[NSMutableDictionary alloc] init];
-    arguments[ID]= notification.userInfo[NOTIFICATION_ID];
-    if (notification.userInfo[TITLE] != [NSNull null]) {
-        arguments[TITLE] =notification.userInfo[TITLE];
-    }
-    if (notification.alertBody != nil) {
-        arguments[BODY] = notification.alertBody;
-    }
-    if (notification.userInfo[PAYLOAD] != [NSNull null]) {
-        arguments[PAYLOAD] =notification.userInfo[PAYLOAD];
-    }
-    [_channel invokeMethod:DID_RECEIVE_LOCAL_NOTIFICATION arguments:arguments];
+    NSDictionary *payloadDictionary = [self updatePayloadDictionary:[self stringToDictionary:notification.userInfo[PAYLOAD]] fromSource:@"background"];
+    [_channel invokeMethod:DID_RECEIVE_LOCAL_NOTIFICATION arguments:payloadDictionary];
 }
 
 @end

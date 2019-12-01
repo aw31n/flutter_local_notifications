@@ -13,7 +13,7 @@ class NotificationActionButton {
   NotificationActionButton fromMap(Map<String, dynamic> data) {
 
     key = data['key'];
-    label = data['key'];
+    label = data['label'];
     autoCancel = data['autoCancel'];
     requiresInput = data['requiresInput'];
 

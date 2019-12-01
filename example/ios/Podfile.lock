@@ -6,12 +6,15 @@ PODS:
     - Flutter
   - shared_preferences (0.0.1):
     - Flutter
+  - url_launcher (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Pods/.symlinks/flutter/ios`)
   - flutter_local_notifications (from `Pods/.symlinks/plugins/flutter_local_notifications/ios`)
   - path_provider (from `Pods/.symlinks/plugins/path_provider/ios`)
   - shared_preferences (from `Pods/.symlinks/plugins/shared_preferences/ios`)
+  - url_launcher (from `Pods/.symlinks/plugins/url_launcher/ios`)
 
 EXTERNAL SOURCES:
   Flutter:
@@ -22,12 +25,15 @@ EXTERNAL SOURCES:
     :path: Pods/.symlinks/plugins/path_provider/ios
   shared_preferences:
     :path: Pods/.symlinks/plugins/shared_preferences/ios
+  url_launcher:
+    :path: Pods/.symlinks/plugins/url_launcher/ios
 
 SPEC CHECKSUMS:
   Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
   flutter_local_notifications: 9e4738ce2471c5af910d961a6b7eadcf57c50186
   path_provider: f96fff6166a8867510d2c25fdcc346327cc4b259
   shared_preferences: 1feebfa37bb57264736e16865e7ffae7fc99b523
+  url_launcher: 0067ddb8f10d36786672aa0722a21717dba3a298
 
 PODFILE CHECKSUM: a58e19c59fdbf6af9d1c82e73a979aef236a37de
 
