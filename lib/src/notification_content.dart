@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 import 'notification_action_button.dart';
 
 class NotificationContent {
@@ -14,8 +16,8 @@ class NotificationContent {
   Map<String, String> payload;
 
   NotificationContent({
-    this.id,
-    this.title,
+    @required this.id,
+    @required this.title,
     this.body,
     this.actionButtons,
     this.payload

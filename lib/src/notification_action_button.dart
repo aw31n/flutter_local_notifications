@@ -1,13 +1,16 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
 class NotificationActionButton {
   String key;
   String label;
   bool autoCancel;
   bool requiresInput;
 
-  NotificationActionButton({this.key, this.label, this.autoCancel, this.requiresInput}){
+  NotificationActionButton({@required this.key, @required this.label, this.autoCancel, this.requiresInput}){
     requiresInput = requiresInput ?? false;
+    autoCancel = autoCancel ?? true;
   }
 
   NotificationActionButton fromMap(Map<String, dynamic> data) {
