@@ -105,6 +105,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
     private static final String INVALID_RAW_RESOURCE_ERROR_MESSAGE = "The resource %s could not be found. Please make sure it has been added as a raw resource to your Android head project.";
     public static String NOTIFICATION_ID = "notification_id";
     public static String NOTIFICATION_TITLE = "title";
+    public static String NOTIFICATION_BODY = "body";
     public static String ACTION_KEY = "action_key";
     public static String NOTIFICATION = "notification";
     public static String NOTIFICATION_DETAILS = "notificationDetails";
@@ -143,6 +144,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
         intent.putExtra(NOTIFICATION_ID, notificationDetails.id);
         intent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
+        intent.putExtra(NOTIFICATION_BODY, notificationDetails.body);
 
         intent.putExtra(CREATED_DATE, getUTCdate());
 
@@ -217,6 +219,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
                 actionIntent.putExtra(NOTIFICATION_ID, notificationDetails.id);
                 actionIntent.putExtra(NOTIFICATION_TITLE, notificationDetails.title);
+                actionIntent.putExtra(NOTIFICATION_BODY, notificationDetails.body);
 
                 actionIntent.putExtra(ACTION_KEY, buttonKey);
 
@@ -955,6 +958,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
             returnObject.put(NOTIFICATION_ID,    notification_id);
             returnObject.put(NOTIFICATION_TITLE, intent.getStringExtra(NOTIFICATION_TITLE));
+            returnObject.put(NOTIFICATION_BODY, intent.getStringExtra(NOTIFICATION_BODY));
 
             returnObject.put(ACTION_KEY, intent.getStringExtra(ACTION_KEY));
 
