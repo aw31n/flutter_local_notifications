@@ -13,6 +13,8 @@ dependencies:
 
   url_launcher: ^3.0.2
 
+  #intl: ^0.16.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

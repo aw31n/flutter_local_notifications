@@ -61,10 +61,14 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
+import android.util.Log;
 /**
  * FlutterLocalNotificationsPlugin
  */
 public class FlutterLocalNotificationsPlugin implements MethodCallHandler, PluginRegistry.NewIntentListener {
+
+    public static final String TAG = "FlutterLocalNotificationsPlugin";
+
     public static final String SHARED_PREFERENCES_KEY = "notification_plugin_cache";
     private static final String DRAWABLE = "drawable";
     private static final String DEFAULT_ICON = "defaultIcon";
@@ -795,6 +799,7 @@ public class FlutterLocalNotificationsPlugin implements MethodCallHandler, Plugi
 
     private void show(MethodCall call, Result result) {
         Map<String, Object> arguments = call.arguments();
+        Log.d(TAG, arguments.toString());
         NotificationDetails notificationDetails = extractNotificationDetails(result, arguments);
         if (notificationDetails != null) {
             showNotification(registrar.context(), notificationDetails);

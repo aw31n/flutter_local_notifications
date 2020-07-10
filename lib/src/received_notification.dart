@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:intl/intl.dart';
 
 enum NotificationSource{ foreground, background }
 
@@ -13,7 +12,7 @@ class ReceivedNotification {
   String buttonKeyInput = '';
   Map<String, String> payload;
   String receivedDate;
-  String createdDate = DateFormat('yyyy-MM-dd H:m:s').format(DateTime.now());
+  String createdDate;
 
   ReceivedNotification({
     this.notification_id,
@@ -22,7 +21,8 @@ class ReceivedNotification {
     this.source,
     this.buttonKeyPressed,
     this.buttonKeyInput,
-    this.payload
+    this.payload,
+    this.createdDate
   });
 
   ReceivedNotification fromMap(Map<String, dynamic> receivedContent) {
