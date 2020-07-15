@@ -11,7 +11,6 @@ import 'initialization_settings.dart';
 import 'notification_app_launch_details.dart';
 import 'notification_details.dart';
 import 'pending_notification_request.dart';
-import 'package:ansicolor/ansicolor.dart';
 
 /// Signature of callback passed to [initialize]. Callback triggered when user taps on a notification
 
@@ -105,14 +104,12 @@ class FlutterLocalNotificationsPlugin {
   }
 
   _showDeprecatedWarning(){
-    AnsiPen pen = AnsiPen()..white(bold: true)..rgb(r: 1.0, g: 0.0, b: 0.0);
-
     // TODO link example
     debugPrint(
-      pen("*************  WARNING: YOU ARE USING A DEPRECATED METHOD  *******************\n")+
-      pen("** Do not pass plain text over notifications. Use Payload object instead.\n")+
-      pen("** Examples at XXXXXXXX\n")+
-      pen("*****************************************************************************")
+      "*************  WARNING: YOU ARE USING A DEPRECATED METHOD  *******************\n"
+      "** Do not pass plain text over notifications. Use Payload object instead.\n"
+      "** Examples at XXXXXXXX\n"
+      "*****************************************************************************"
     );
   }
 
